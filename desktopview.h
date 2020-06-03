@@ -20,7 +20,7 @@ class DesktopView : public QGraphicsView
 public:
 	static DesktopView *desktopView;
 
-	explicit DesktopView(QWidget *parent = 0);
+	explicit DesktopView(int faceCnt, QWidget *parent = 0);
 	virtual ~DesktopView();
 
 protected:
@@ -40,7 +40,7 @@ private:
 	void initSwitchUi();
 	void iniSignalSlots();
 
-	int initRkfacial();
+	int initRkfacial(int faceCnt);
 	void deinitRkfacial();
 
 	static void paintBox(int left, int top, int right, int bottom);

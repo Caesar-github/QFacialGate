@@ -6,10 +6,8 @@
 
 #include "desktopview.h"
 
-#define SCREEN_WIDTH 1280
-#define SCREEN_HEIGHT 720
-
-#define FACE_CNT 30000
+#define CAMERA_WIDTH 1280
+#define CAMERA_HEIGHT 720
 
 DesktopView *DesktopView::desktopView = nullptr;
 
@@ -162,12 +160,12 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 static 
 
-int DesktopView::initRkfacial()
+int DesktopView::initRkfacial(int faceCnt)
 {
-	set_isp_param(SCREEN_WIDTH, SCREEN_HEIGHT, displayIsp, true);
-	set_cif_param(SCREEN_WIDTH, SCREEN_HEIGHT, displayCif);
+	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayIsp, true);
+	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayCif);
 
-	set_face_param(SCREEN_WIDTH, SCREEN_HEIGHT, FACE_CNT);
+	set_face_param(CAMERA_WIDTH, CAMERA_HEIGHT, faceCnt);
 
 	register_rkfacial_paint_box(paintBox);
 	register_rkfacial_paint_name(paintName);
@@ -184,7 +182,7 @@ void DesktopView::deinitRkfacial()
 	rkfacial_exit();
 }
 
-DesktopView::DesktopView(QWidget *parent)
+DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	: QGraphicsView(parent)
 {
 	desktopView = this;
@@ -213,7 +211,7 @@ DesktopView::DesktopView(QWidget *parent)
 	scene->setSceneRect(scene->itemsBoundingRect());
 	setScene(scene);
 
-	initRkfacial();
+	initRkfacial(faceCnt);
 }
 
 DesktopView::~DesktopView()

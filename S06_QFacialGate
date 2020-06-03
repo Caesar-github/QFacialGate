@@ -17,8 +17,8 @@ case "$1" in
     fi
     #256M DDR face number 10000, great than 256M DDR face number 30000
     export QT_QPA_FB_DRM=1
-    export QT_QPA_PLATFORM=linuxfb:rotation=0 
-    QFacialGate &
+    export QT_QPA_PLATFORM=linuxfb:rotation=0
+    QFacialGate -f $face &
     ;;
   stop)
     killall QFacialGate
