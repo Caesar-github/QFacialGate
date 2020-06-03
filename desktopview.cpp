@@ -142,7 +142,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
-	//emit desktopView->updateVideo();
+	desktopView->scene()->update();
 }
 
 void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
@@ -157,7 +157,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
-	//emit desktopView->updateVideo();
+	desktopView->scene()->update();
 }
 
 static 

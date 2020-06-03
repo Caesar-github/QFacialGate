@@ -91,7 +91,7 @@ QRectF VideoItem::boundingRect() const
 
 void VideoItem::updateSlots()
 {
-#if 1
+#if 0 
 		//printf fps
 		static QTime u_time;
 		static int u_frames = 0;
@@ -348,9 +348,6 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
 
-	while(!video.buf)
-		usleep(10000);
-
 	mutex.lock();
 
 #if 0
@@ -374,16 +371,11 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
 	// TODO: Parse dst format
 	//qDebug("image->format: %d", image->format());
-#if 1
+
 	//qt5base 0008 patch USE_RGB565
 	rgaDrawImage(video.buf, video.format, video.width, video.height, video.pitch,
 					image->bits(), RK_FORMAT_RGB_565, image->width(),
 					image->height(), image->bytesPerLine(), video.rotate);
-#else
-	rgaDrawImage(video.buf, video.format, video.width, video.height, video.pitch,
-					image->bits(), RK_FORMAT_BGRA_8888, image->width(),
-					image->height(), image->bytesPerLine(), video.rotate);
-#endif
 
 	blackList = drawInfoBox(painter);
 	drawBox(painter, blackList);
@@ -391,5 +383,4 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	video.buf = NULL;
 
 	mutex.unlock();
-	update();
 }
