@@ -119,12 +119,13 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 	desktopView->videoItem->setBoxRect(left, top, right, bottom);
 }
 
-void DesktopView::paintName(char *name, bool real)
+void DesktopView::paintInfo(struct user_info *info, bool real)
 {
 	if(desktopView->cameraType == CIF)
 		return;
 
-	desktopView->videoItem->setName(name, real);
+	if(info)
+		desktopView->videoItem->setName(info->sPicturePath, real);
 }
 
 void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
@@ -158,9 +159,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	desktopView->scene()->update();
 }
 
-static 
-
-int DesktopView::initRkfacial(int faceCnt)
+static int DesktopView::initRkfacial(int faceCnt)
 {
 	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayIsp, true);
 	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayCif);
@@ -168,7 +167,7 @@ int DesktopView::initRkfacial(int faceCnt)
 	set_face_param(CAMERA_WIDTH, CAMERA_HEIGHT, faceCnt);
 
 	register_rkfacial_paint_box(paintBox);
-	register_rkfacial_paint_name(paintName);
+	register_rkfacial_paint_info(paintInfo);
 
 	if(rkfacial_init() < 0) {
 		qDebug("%s: rkfacial_init failed", __func__);

@@ -5,6 +5,7 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QTouchEvent>
+#include <rkfacial/rkfacial.h>
 
 #include "videoitem.h"
 
@@ -44,7 +45,7 @@ private:
 	void deinitRkfacial();
 
 	static void paintBox(int left, int top, int right, int bottom);
-	static void paintName(char *name, bool real);
+	static void paintInfo(struct user_info *info, bool real);
 
 	static void displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 	static void displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
