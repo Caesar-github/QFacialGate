@@ -73,8 +73,7 @@ void DesktopView::initSwitchUi()
 	groupBox->setObjectName("groupBox");
 	groupBox->setStyleSheet("#groupBox {background-color:rgba(10, 10, 10,100);}");
 	groupBox->setWindowOpacity(0.5);
-
-	//switchGroupBox->setWindowFlags(Qt::FramelessWindowHint);
+	//groupBox->setWindowFlags(Qt::FramelessWindowHint);
 	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), 30));
 }
 
@@ -141,6 +140,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
+	desktopView->update();
 	desktopView->scene()->update();
 }
 
@@ -156,6 +156,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
+	desktopView->update();
 	desktopView->scene()->update();
 }
 
