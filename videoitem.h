@@ -64,6 +64,7 @@ private:
 	struct VideoInfo video;
 	struct FacialInfo facial;
 	struct InfoBox infoBox;
+	int *infoBoxBuf;
 
 	QMutex mutex;
 
@@ -71,7 +72,7 @@ private:
 	void drawBox(QPainter *painter, bool blackList);
 
 	void initTimer();
-		
+
 private slots:
 	void timerTimeOut();
 	void updateSlots();

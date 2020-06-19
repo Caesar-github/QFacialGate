@@ -16,7 +16,7 @@
 VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	: QGraphicsObject(parent)
 {
-	char *networkip;
+	int r = 153, g = 51, b = 250, a = 100;
 
 	displayRect = rect;
 	infoBox.infoRect.setRect(displayRect.x(), displayRect.height()*4/5, displayRect.width(), displayRect.height()/5);
@@ -30,12 +30,24 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	memset(facial.fullName, 0, NAME_LEN);
 	memset(&video, 0, sizeof(struct VideoInfo));
 
+	int len = infoBox.infoRect.width() * infoBox.infoRect.height();
+	int bgra = ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+	infoBoxBuf = (int *)malloc(len * sizeof(int));
+	if(infoBoxBuf) {
+		for(int i = 0; i < len; i++)
+			infoBoxBuf[i] = bgra;
+	}
+
 	//initTimer();
 }
 
 VideoItem::~VideoItem()
 {
 	c_RkRgaDeInit();
+	if(infoBoxBuf) {
+		free(infoBoxBuf);
+		infoBoxBuf = NULL;
+	}
 }
 
 void VideoItem::initTimer()
@@ -67,6 +79,11 @@ void VideoItem::render(uchar *buf, RgaSURF_FORMAT format, int rotate,
 
 	if (!cb_frames)
 		cb_time.start();
+
+	if(cb_time.elapsed()/1000 >= 10) {
+		cb_frames = 0;
+		cb_time.restart();
+	}
 
 	if(!(++cb_frames % 50))
 		printf("+++++ %s FPS: %2.2f (%u frames in %ds)\n",
@@ -201,7 +218,7 @@ static bool findName(char *fullName, char *name, int nameLen)
 }
 
 static int rgaPrepareInfo(uchar *buf, RgaSURF_FORMAT format,
-				int width, int height, int pitch, rga_info_t *info)
+				int width, int height, int pitch, int x, int y, rga_info_t *info)
 {
 	int bpp;
 
@@ -226,16 +243,15 @@ static int rgaPrepareInfo(uchar *buf, RgaSURF_FORMAT format,
 		return -1;
 	}
 
-	rga_set_rect(&info->rect, 0, 0, width, height,
+	rga_set_rect(&info->rect, x, y, width - x, height - y,
 				 pitch * 8 / bpp, height, format);
 	return 0;
 }
 
 static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format,
-				int src_width, int src_height, int src_pitch,
-				uchar *dst, RgaSURF_FORMAT dst_format,
-				int dst_width, int dst_height, int dst_pitch,
-				int rotate)
+				int src_x, int src_y, int src_width, int src_height, int src_pitch,
+				uchar *dst, RgaSURF_FORMAT dst_format, int dst_x, int dst_y,
+				int dst_width, int dst_height, int dst_pitch, int rotate, unsigned int blend)
 {
 	static int rgaSupported = 1;
 	static int rgaInited = 0;
@@ -257,16 +273,18 @@ static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format,
 		rgaInited = 1;
 	}
 
-	srcInfo.rotation = 4;
 	if (rgaPrepareInfo(src, src_format, src_width, src_height,
-			 src_pitch, &srcInfo) < 0)
+			 src_pitch, src_x, src_y, &srcInfo) < 0)
 		return -1;
 
 	if (rgaPrepareInfo(dst, dst_format, dst_width, dst_height,
-			 dst_pitch, &dstInfo) < 0)
+			 dst_pitch, dst_x, dst_y, &dstInfo) < 0)
 		return -1;
 
 	srcInfo.rotation = rotate;
+	if(blend)
+		srcInfo.blend = blend;
+
 	return c_RkRgaBlit(&srcInfo, &dstInfo, NULL);
 }
 
@@ -281,12 +299,14 @@ bool VideoItem::drawInfoBox(QPainter *painter)
 	if(facial.boxRect.isEmpty())
 		return blackList;
 
+	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
 	painter->setPen(QPen(Qt::white, 2));
+
+#ifdef QT_FB_DRM_RGB565
 	painter->setBrush(QColor(153, 51, 250, 100));
 	painter->setClipRect(boundingRect());
 	painter->drawRect(infoBox.infoRect);
-
-	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
+#endif
 
 	getLocalIp("eth0", ip, 20);
 	if(strlen(ip)) {
@@ -340,7 +360,8 @@ void VideoItem::drawBox(QPainter *painter, bool blackList)
 void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 						QWidget *widget)
 {
-	bool blackList;
+	bool blackList = false;
+	static int printf_cnt = 1;
 
 	if(!painter->paintEngine())
 		return;
@@ -357,6 +378,11 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	if (!paint_frames)
 		paint_time.start();
 
+	if(paint_time.elapsed()/1000 >= 10) {
+		paint_frames = 0;
+		paint_time.restart();
+	}
+
 	if(!(++paint_frames % 50))
 		printf("----- %s FPS: %2.2f (%u frames in %ds)\n",
 				__func__, paint_frames * 1000.0 / paint_time.elapsed(),
@@ -370,12 +396,30 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	}
 
 	// TODO: Parse dst format
-	//qDebug("image->format: %d", image->format());
+	if(printf_cnt) {
+		qDebug("image->format: %d", image->format());
+		printf_cnt--;
+	}
 
-	//qt5base 0008 patch USE_RGB565
-	rgaDrawImage(video.buf, video.format, video.width, video.height, video.pitch,
-					image->bits(), RK_FORMAT_RGB_565, image->width(),
-					image->height(), image->bytesPerLine(), video.rotate);
+#ifdef QT_FB_DRM_RGB565
+	rgaDrawImage(video.buf, video.format, 0, 0, video.width, video.height, video.pitch,
+					image->bits(), RK_FORMAT_RGB_565, 0, 0, image->width(),
+					image->height(), image->bytesPerLine(), video.rotate, 0);
+#else
+	rgaDrawImage(video.buf, video.format, 0, 0, video.width, video.height, video.pitch,
+					image->bits(), RK_FORMAT_BGRA_8888, 0, 0, image->width(),
+					image->height(), image->bytesPerLine(), video.rotate, 0);
+
+	if(!facial.boxRect.isEmpty() && infoBoxBuf) {
+		//unsigned int blend = 0xFF0105;
+		unsigned int blend = 0xFF0405;
+		rgaDrawImage((uchar *)infoBoxBuf, RK_FORMAT_BGRA_8888, 0, 0,
+						infoBox.infoRect.width(), infoBox.infoRect.height(),
+						infoBox.infoRect.width() * 4, image->bits(),
+						RK_FORMAT_BGRA_8888, infoBox.infoRect.x(), infoBox.infoRect.y(),
+						image->width(), image->height(), image->bytesPerLine(), 0, blend);
+	}
+#endif
 
 	blackList = drawInfoBox(painter);
 	drawBox(painter, blackList);
