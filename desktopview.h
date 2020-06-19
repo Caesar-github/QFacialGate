@@ -25,7 +25,7 @@ public:
 	virtual ~DesktopView();
 
 protected:
-	//bool event(QEvent *event);
+	bool event(QEvent *event) override;
 
 private:
 	QGroupBox *groupBox;
