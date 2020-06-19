@@ -65,6 +65,7 @@ private:
 	struct FacialInfo facial;
 	struct InfoBox infoBox;
 	int *infoBoxBuf;
+	char ip[20];
 
 	QMutex mutex;
 
