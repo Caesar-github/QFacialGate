@@ -38,32 +38,73 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 			infoBoxBuf[i] = bgra;
 	}
 
-	//initTimer();
+	initTimer();
 }
 
 VideoItem::~VideoItem()
 {
 	c_RkRgaDeInit();
+	timer->stop();
 	if(infoBoxBuf) {
 		free(infoBoxBuf);
 		infoBoxBuf = NULL;
 	}
 }
 
+static int getLocalIp(char *interface, char *ip, int ip_len)
+{
+	int sd;
+	struct sockaddr_in sin;
+	struct ifreq ifr;
+
+	memset(ip, 0, ip_len);
+	sd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (-1 == sd) {
+		qDebug("socket error: %s\n", strerror(errno));
+		return -1;
+	}
+
+	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+	ifr.ifr_name[IFNAMSIZ - 1] = 0;
+
+	if (ioctl(sd, SIOCGIFADDR, &ifr) < 0) {
+		qDebug("ioctl error: %s\n", strerror(errno));
+		close(sd);
+		return -1;
+	}
+
+	memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
+	sprintf(ip, "%s", inet_ntoa(sin.sin_addr));
+
+	close(sd);
+	return 0;
+}
+
 void VideoItem::initTimer()
 {
-	if(NULL == timer)
-		timer = new QTimer;
-
+	timer = new QTimer;
 	timer->setSingleShot(false);
-	timer->start(10); //ms
+	timer->start(3000); //ms
 	connect(timer, SIGNAL(timeout()), this, SLOT(timerTimeOut()));
 }
 
 void VideoItem::timerTimeOut()
 {
-	if(video.buf)
-		update();
+#if 0
+	static QTime t_time;
+	static int cnt = 1;
+
+	if(cnt) {
+		t_time.start();
+		cnt--;
+	}
+
+	qDebug("%s: %ds", __func__, t_time.elapsed() / 1000);
+#endif
+
+	mutex.lock();
+	getLocalIp("eth0", ip, 20);
+	mutex.unlock();
 }
 
 void VideoItem::render(uchar *buf, RgaSURF_FORMAT format, int rotate,
@@ -166,35 +207,6 @@ void VideoItem::setName(char *name, bool real)
 	mutex.unlock();
 }
 
-static int getLocalIp(char *interface, char *ip, int ip_len)
-{
-	int sd;
-	struct sockaddr_in sin;
-	struct ifreq ifr;
-
-	memset(ip, 0, ip_len);
-	sd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (-1 == sd) {
-		qDebug("socket error: %s\n", strerror(errno));
-		return -1;
-	}
-
-	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
-	ifr.ifr_name[IFNAMSIZ - 1] = 0;
-
-	if (ioctl(sd, SIOCGIFADDR, &ifr) < 0) {
-		qDebug("ioctl error: %s\n", strerror(errno));
-		close(sd);
-		return -1;
-	}
-
-	memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
-	sprintf(ip, "%s", inet_ntoa(sin.sin_addr));
-
-	close(sd);
-	return 0;
-}
-
 static bool findName(char *fullName, char *name, int nameLen)
 {
 	bool blackList = false;
@@ -294,7 +306,6 @@ bool VideoItem::drawInfoBox(QPainter *painter)
 	QFont font;
 	bool blackList = false;
 	char name[NAME_LEN];
-	char ip[20];
 
 	if(facial.boxRect.isEmpty())
 		return blackList;
@@ -308,7 +319,6 @@ bool VideoItem::drawInfoBox(QPainter *painter)
 	painter->drawRect(infoBox.infoRect);
 #endif
 
-	getLocalIp("eth0", ip, 20);
 	if(strlen(ip)) {
 		font.setPixelSize(20);
 		painter->setFont(font);
