@@ -2,6 +2,8 @@
 #include <sys/time.h>
 
 #include <QtWidgets>
+#include <QTouchEvent>
+#include <QList>
 #include <rkfacial/rkfacial.h>
 
 #include "desktopview.h"
@@ -11,16 +13,41 @@
 
 DesktopView *DesktopView::desktopView = nullptr;
 
-#if 0
 bool DesktopView::event(QEvent *event)
 {
-	//qDebug("%s, +++++ tid(%lu)\n", __func__, pthread_self());
 	switch(event->type()) {
 		case QEvent::TouchBegin:
 		case QEvent::TouchUpdate:
 		case QEvent::TouchEnd:
-			qDebug("-----event->type: %d", event->type());
+		{
+			QTouchEvent *touchEvent = static_cast<QTouchEvent *>(event);
+			QList<QTouchEvent::TouchPoint> touchPoints = touchEvent->touchPoints();
+			if(touchPoints.count() != 1)
+				break;
+
+			const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+			switch (touchPoint.state()) {
+				case Qt::TouchPointStationary:
+				case Qt::TouchPointReleased:
+					// don't do anything if this touch point hasn't moved or has been released
+					break;
+				default:
+				{
+					QRectF rect = touchPoint.rect();
+					if (rect.isEmpty())
+						break;
+
+					if(rect.y() > groupBox->height() && rect.y() < desktopRect.height()*4/5) {
+						if(groupBox->isVisible())
+							groupBox->setVisible(false);
+						else
+							groupBox->setVisible(true);
+					}
+					break;
+				}
+			}
 			break;
+		}
 
 		default:
 			break;
@@ -28,7 +55,6 @@ bool DesktopView::event(QEvent *event)
 
 	return QGraphicsView::event(event);
 }
-#endif
 
 void DesktopView::cameraSwitch()
 {
@@ -74,7 +100,7 @@ void DesktopView::initSwitchUi()
 	groupBox->setStyleSheet("#groupBox {background-color:rgba(10, 10, 10,100);}");
 	groupBox->setWindowOpacity(0.5);
 	//groupBox->setWindowFlags(Qt::FramelessWindowHint);
-	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), 30));
+	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), desktopRect.height()/10));
 }
 
 void DesktopView::iniSignalSlots()
@@ -208,6 +234,7 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	scene->addItem(videoItem);
 	scene->addWidget(groupBox);
+	groupBox->setVisible(false);
 	scene->setSceneRect(scene->itemsBoundingRect());
 	setScene(scene);
 
