@@ -26,7 +26,6 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	infoBox.nameRect = infoBox.timeRect.adjusted(0, 70, 0, 0);
 	infoBox.title = tr("人脸识别");
 	facial.real = false;
-	facial.update = false;
 	memset(facial.fullName, 0, NAME_LEN);
 	memset(&video, 0, sizeof(struct VideoInfo));
 
@@ -60,7 +59,7 @@ static int getLocalIp(char *interface, char *ip, int ip_len)
 	memset(ip, 0, ip_len);
 	sd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (-1 == sd) {
-		qDebug("socket error: %s\n", strerror(errno));
+		//qDebug("socket error: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -68,7 +67,7 @@ static int getLocalIp(char *interface, char *ip, int ip_len)
 	ifr.ifr_name[IFNAMSIZ - 1] = 0;
 
 	if (ioctl(sd, SIOCGIFADDR, &ifr) < 0) {
-		qDebug("ioctl error: %s\n", strerror(errno));
+		//qDebug("ioctl error: %s\n", strerror(errno));
 		close(sd);
 		return -1;
 	}
@@ -173,7 +172,6 @@ void VideoItem::setBoxRect(int left, int top, int right, int bottom)
 	if(abs(facial.boxRect.left() - left) > MIN_POS_DIFF || abs(facial.boxRect.top() - top) > MIN_POS_DIFF
 		|| abs(facial.boxRect.right() - right) > MIN_POS_DIFF || abs(facial.boxRect.bottom() - bottom) > MIN_POS_DIFF) {
 		facial.boxRect.setCoords(left, top, right, bottom);
-		facial.update = true;
 	}
 
 	mutex.unlock();
@@ -190,20 +188,13 @@ void VideoItem::setName(char *name, bool real)
 		if(strncmp(facial.fullName, name, len)) {
 			memset(facial.fullName, 0, NAME_LEN);
 			strncpy(facial.fullName, name, len);
-			facial.update = true;
-		}
-
-		if(facial.real != real) {
-			facial.real = real;
-			facial.update = true;
 		}
 	} else {
-		if(strlen(facial.fullName)) {
+		if(strlen(facial.fullName))
 			memset(facial.fullName, 0, sizeof(NAME_LEN));
-			facial.update = true;
-		}
 	}
 
+	facial.real = real;
 	mutex.unlock();
 }
 

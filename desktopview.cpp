@@ -115,12 +115,12 @@ void DesktopView::iniSignalSlots()
 static bool coordIsVaild(int left, int top, int right, int bottom)
 {
 	if(left < 0 || top < 0 || right < 0 || bottom < 0) {
-		qDebug("%s: invalid rect(%d, %d, %d, %d)", left, top, right, bottom);
+		qDebug("%s: invalid rect(%d, %d, %d, %d)", __func__, left, top, right, bottom);
 		return false;
 	}
 
 	if(left > right || top > bottom) {
-		qDebug("%s: invalid rect(%d, %d, %d, %d)", left, top, right, bottom);
+		qDebug("%s: invalid rect(%d, %d, %d, %d)", __func__, left, top, right, bottom);
 		return false;
 	}
 
@@ -151,6 +151,8 @@ void DesktopView::paintInfo(struct user_info *info, bool real)
 
 	if(info)
 		desktopView->videoItem->setName(info->sPicturePath, real);
+	else
+		desktopView->videoItem->setName(NULL, real);
 }
 
 void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
@@ -164,7 +166,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	}
 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
-	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
+	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
 	desktopView->update();
 	desktopView->scene()->update();
@@ -180,7 +182,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 		return;
 	}
 
-	desktopView->videoItem->render(src_ptr, src_fmt, rotation,
+	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
 	desktopView->update();
 	desktopView->scene()->update();

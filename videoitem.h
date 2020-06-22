@@ -25,7 +25,6 @@ struct FacialInfo
 	QRect boxRect;
 	char fullName[NAME_LEN];
 	bool real;
-	bool update;
 };
 
 struct InfoBox
