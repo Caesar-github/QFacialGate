@@ -4,12 +4,16 @@
 #include <QtWidgets>
 #include <QTouchEvent>
 #include <QList>
-#include <rkfacial/rkfacial.h>
+#include <QFile>
+#include <QDir>
 
+#include <rkfacial/rkfacial.h>
+#include "savethread.h"
 #include "desktopview.h"
 
 #define CAMERA_WIDTH 1280
 #define CAMERA_HEIGHT 720
+#define SAVE_FRAMES 30
 
 DesktopView *DesktopView::desktopView = nullptr;
 
@@ -79,6 +83,13 @@ void DesktopView::deleteSlots()
 	rkfacial_delete();
 }
 
+void DesktopView::saveSlots()
+{
+	saving = true;
+	saveBtn->setEnabled(false);
+	switchBtn->setEnabled(false);
+}
+
 void DesktopView::initSwitchUi()
 {
 	QHBoxLayout *hLayout = new QHBoxLayout;
@@ -86,12 +97,23 @@ void DesktopView::initSwitchUi()
 	groupBox = new QGroupBox();
 
 	registerBtn = new QPushButton(tr("Register"));
+	registerBtn->setFixedSize(160, 80);
+	registerBtn->setStyleSheet("QPushButton{font-size:35px}");
 	hLayout->addWidget(registerBtn);
 
 	switchBtn = new QPushButton(tr("RGB"));
+	switchBtn->setFixedSize(160, 80);
+	switchBtn->setStyleSheet("QPushButton{font-size:35px}");
 	hLayout->addWidget(switchBtn);
 
+	saveBtn = new QPushButton(tr("Save"));
+	saveBtn->setFixedSize(160, 80);
+	saveBtn->setStyleSheet("QPushButton{font-size:35px}");
+	hLayout->addWidget(saveBtn);
+
 	deleteBtn = new QPushButton(tr("Delete"));
+	deleteBtn->setFixedSize(160, 80);
+	deleteBtn->setStyleSheet("QPushButton{font-size:35px}");
 	hLayout->addWidget(deleteBtn);
 
 	groupBox->setLayout(hLayout);
@@ -108,6 +130,7 @@ void DesktopView::iniSignalSlots()
 	connect(switchBtn, SIGNAL(clicked()), this, SLOT(cameraSwitch()));
 	connect(registerBtn, SIGNAL(clicked()), this, SLOT(registerSlots()));
 	connect(deleteBtn, SIGNAL(clicked()), this, SLOT(deleteSlots()));
+	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
 	//connect(this, SIGNAL(updateVideo()), videoItem, SLOT(updateSlots()));
 	//connect(this, SIGNAL(updateVideo()), videoItem, SLOT(updateSlots()), Qt::BlockingQueuedConnection);
 }
@@ -155,6 +178,23 @@ void DesktopView::paintInfo(struct user_info *info, bool real)
 		desktopView->videoItem->setName(NULL, real);
 }
 
+void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
+{
+	if(!saving)
+		return;
+
+	if(saveFrames) {
+		SaveThread *thread = new SaveThread(buf, len, flag, saveFrames);
+		thread->start();
+		saveFrames--;
+	} else {
+		saveFrames = SAVE_FRAMES;
+		saving = false;
+		saveBtn->setEnabled(true);
+		switchBtn->setEnabled(true);
+	}
+}
+
 void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
 {
 	if(desktopView->cameraType != ISP)
@@ -164,6 +204,8 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 		qDebug("%s: src_fmt = %d", __func__, src_fmt);
 		return;
 	}
+
+	desktopView->saveFile((uchar *)src_ptr, src_w * src_h * 3 / 2, "rgb");
 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
@@ -181,6 +223,8 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 		qDebug("%s: src_fmt = %d", __func__, src_fmt);
 		return;
 	}
+
+	desktopView->saveFile((uchar *)src_ptr, src_w * src_h * 3 / 2, "ir");
 
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h, src_w * 3 / 2);
@@ -215,6 +259,8 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 {
 	desktopView = this;
 	cameraType = ISP;
+	saveFrames = SAVE_FRAMES;
+	saving = false;
 
 	QDesktopWidget *desktopWidget = QApplication::desktop();
 	desktopRect = desktopWidget->availableGeometry();
