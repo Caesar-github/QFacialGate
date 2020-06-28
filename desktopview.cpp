@@ -4,8 +4,6 @@
 #include <QtWidgets>
 #include <QTouchEvent>
 #include <QList>
-#include <QFile>
-#include <QDir>
 
 #include <rkfacial/rkfacial.h>
 #include "savethread.h"
@@ -106,7 +104,7 @@ void DesktopView::initSwitchUi()
 	switchBtn->setStyleSheet("QPushButton{font-size:35px}");
 	hLayout->addWidget(switchBtn);
 
-	saveBtn = new QPushButton(tr("Save"));
+	saveBtn = new QPushButton(tr("Capture"));
 	saveBtn->setFixedSize(160, 80);
 	saveBtn->setStyleSheet("QPushButton{font-size:35px}");
 	hLayout->addWidget(saveBtn);
@@ -209,7 +207,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
-						src_w, src_h, src_w * 3 / 2);
+						src_w, src_h);
 	desktopView->update();
 	desktopView->scene()->update();
 }
@@ -227,7 +225,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	desktopView->saveFile((uchar *)src_ptr, src_w * src_h * 3 / 2, "ir");
 
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
-						src_w, src_h, src_w * 3 / 2);
+						src_w, src_h);
 	desktopView->update();
 	desktopView->scene()->update();
 }

@@ -1,5 +1,6 @@
 <RCC>
  <qresource>
   <file>images/test.jpg</file>
+  <file>images/default_user_face.png</file>
  </qresource>
 </RCC>
