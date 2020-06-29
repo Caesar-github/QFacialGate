@@ -1,13 +1,18 @@
 #ifndef VIDEOITEM_H
 #define VIDEOITEM_H
 
-#include <rga/rga.h>
-#include <rga/RgaApi.h>
-
 #include <QGraphicsObject>
 #include <QMutex>
+#include <QImage>
 
+#include <rga/rga.h>
+#include <rga/RgaApi.h>
+#include "snapshotthread.h"
+
+#ifndef NAME_LEN
 #define NAME_LEN 256
+#endif
+
 #define MIN_POS_DIFF 10
 
 struct VideoInfo
@@ -17,7 +22,6 @@ struct VideoInfo
 	int rotate;
 	int width;
 	int height;
-	int pitch;
 };
 
 struct FacialInfo
@@ -34,6 +38,7 @@ struct InfoBox
 	QRectF ipRect;
 	QRectF timeRect;
 	QRectF nameRect;
+	QRectF snapshotRect;
 	QString title;
 };
 
@@ -51,7 +56,7 @@ public:
 
 
 	void render(uchar *buf, RgaSURF_FORMAT format, int rotate,
-			int width, int height, int pitch);
+			int width, int height);
 
 	void setBoxRect(int left, int top, int right, int bottom);
 
@@ -66,10 +71,17 @@ private:
 	int *infoBoxBuf;
 	char ip[20];
 
+	RgaSURF_FORMAT rgaFormat;
+	unsigned int blend;
+
+	QImage defaultSnapshot;
+	SnapshotThread *snapshotThread;
+
 	QMutex mutex;
 
-	bool drawInfoBox(QPainter *painter);
+	bool drawInfoBox(QPainter *painter, QImage *image);
 	void drawBox(QPainter *painter, bool blackList);
+	void drawSnapshot(QPainter *painter, QImage *image);
 
 	void initTimer();
 
