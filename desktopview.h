@@ -32,6 +32,10 @@ private:
 	QPushButton *switchBtn;
 	QPushButton *registerBtn;
 	QPushButton *deleteBtn;
+	QPushButton *saveBtn;
+
+	int saveFrames;
+	bool saving;
 
 	QRect desktopRect;
 	VideoItem *videoItem;
@@ -43,6 +47,8 @@ private:
 
 	int initRkfacial(int faceCnt);
 	void deinitRkfacial();
+
+	void saveFile(uchar *buf, int len, uchar *flag);
 
 	static void paintBox(int left, int top, int right, int bottom);
 	static void paintInfo(struct user_info *info, bool real);
@@ -57,6 +63,7 @@ private slots:
 	void cameraSwitch();
 	void registerSlots();
 	void deleteSlots();
+	void saveSlots();
 };
 
 #endif // DESKTOPVIEW_H

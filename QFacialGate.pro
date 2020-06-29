@@ -24,11 +24,13 @@ QMAKE_CXXFLAGS += -fpermissive
 
 SOURCES += main.cpp \
     videoitem.cpp \
-    desktopview.cpp
+    desktopview.cpp \
+    savethread.cpp
 
 HEADERS += \
     videoitem.h \
-    desktopview.h
+    desktopview.h \
+    savethread.h
 
 RESOURCES += \
     QFacialGate.qrc
