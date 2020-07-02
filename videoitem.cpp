@@ -173,16 +173,20 @@ void VideoItem::updateSlots()
 	update();
 }
 
-void VideoItem::setBoxRect(int left, int top, int right, int bottom)
+bool VideoItem::setBoxRect(int left, int top, int right, int bottom)
 {
+	bool ret = false;
+
 	mutex.lock();
 
 	if(abs(facial.boxRect.left() - left) > MIN_POS_DIFF || abs(facial.boxRect.top() - top) > MIN_POS_DIFF
 		|| abs(facial.boxRect.right() - right) > MIN_POS_DIFF || abs(facial.boxRect.bottom() - bottom) > MIN_POS_DIFF) {
 		facial.boxRect.setCoords(left, top, right, bottom);
+		ret = true;
 	}
 
 	mutex.unlock();
+	return ret;
 }
 
 void VideoItem::setName(char *name, bool real)
@@ -322,7 +326,7 @@ bool VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
 	painter->setPen(QPen(Qt::white, 2));
 
-#ifdef QT_FB_DRM_RGB565
+#if defined(QT_FB_DRM_RGB565) || defined(TWO_PLANE)
 	painter->setBrush(QColor(153, 51, 250, 100));
 	painter->setClipRect(boundingRect());
 	painter->drawRect(infoBox.infoRect);
@@ -425,6 +429,7 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	QRectF srcRect(0, 0, video.width, video.height);
 	QRectF dstRect(0, 0, image->width(), image->height());
 
+#ifdef ONE_PLANE
 #ifdef QT_FB_DRM_RGB565
 	rgaDrawImage(video.buf, video.format, srcRect, video.width, video.height,
 					image->bits(), rgaFormat, dstRect, image->width(),
@@ -441,6 +446,7 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 						image->bits(), rgaFormat, infoBox.infoRect,
 						image->width(), image->height(), 0, blend);
 	}
+#endif
 #endif
 
 	blackList = drawInfoBox(painter, image);

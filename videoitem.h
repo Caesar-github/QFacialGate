@@ -58,7 +58,7 @@ public:
 	void render(uchar *buf, RgaSURF_FORMAT format, int rotate,
 			int width, int height);
 
-	void setBoxRect(int left, int top, int right, int bottom);
+	bool setBoxRect(int left, int top, int right, int bottom);
 
 	void setName(char *name, bool real);
 

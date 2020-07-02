@@ -6,6 +6,7 @@
 #include <QList>
 
 #include <rkfacial/rkfacial.h>
+#include <rkfacial/display.h>
 #include "savethread.h"
 #include "desktopview.h"
 
@@ -65,9 +66,17 @@ void DesktopView::cameraSwitch()
 		videoItem->setName(NULL, false);
 		switchBtn->setText(tr("IR"));
 		cameraType = CIF;
+
+#ifdef TWO_PLANE
+		display_switch(DISPLAY_VIDEO_IR);
+#endif
 	} else {
 		switchBtn->setText(tr("RGB"));
 		cameraType = ISP;
+
+#ifdef TWO_PLANE
+		display_switch(DISPLAY_VIDEO_RGB);
+#endif
 	}
 }
 
@@ -150,6 +159,8 @@ static bool coordIsVaild(int left, int top, int right, int bottom)
 
 void DesktopView::paintBox(int left, int top, int right, int bottom)
 {
+	bool ret;
+
 	if(desktopView->cameraType == CIF)
 		return;
 
@@ -157,12 +168,21 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 		return;
 
 	if(!left && !top && !right && !bottom) {
-		desktopView->videoItem->setBoxRect(0, 0, -1, -1);
+		ret = desktopView->videoItem->setBoxRect(0, 0, -1, -1);
 		desktopView->videoItem->setName(NULL, false);
-		return;
+		goto update_paint;
 	}
 
-	desktopView->videoItem->setBoxRect(left, top, right, bottom);
+	ret = desktopView->videoItem->setBoxRect(left, top, right, bottom);
+
+update_paint:
+#ifdef TWO_PLANE
+	if(ret) {
+		desktopView->update();
+		desktopView->scene()->update();
+	}
+#endif
+	return;
 }
 
 void DesktopView::paintInfo(struct user_info *info, bool real)
@@ -232,8 +252,19 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 static int DesktopView::initRkfacial(int faceCnt)
 {
+#ifdef TWO_PLANE
+	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL, true);
+	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL);
+
+	display_switch(DISPLAY_VIDEO_RGB);
+	if (display_init(720, 1280)) {
+		qDebug("%s: display_init failed", __func__);
+		return -1;
+	}
+#else
 	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayIsp, true);
 	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayCif);
+#endif
 
 	set_face_param(CAMERA_WIDTH, CAMERA_HEIGHT, faceCnt);
 
@@ -250,6 +281,10 @@ static int DesktopView::initRkfacial(int faceCnt)
 void DesktopView::deinitRkfacial()
 {
 	rkfacial_exit();
+
+#ifdef TWO_PLANE
+	display_exit();
+#endif
 }
 
 DesktopView::DesktopView(int faceCnt, QWidget *parent)
@@ -259,6 +294,10 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	cameraType = ISP;
 	saveFrames = SAVE_FRAMES;
 	saving = false;
+
+#ifdef TWO_PLANE
+	this->setStyleSheet("background: transparent");
+#endif
 
 	QDesktopWidget *desktopWidget = QApplication::desktop();
 	desktopRect = desktopWidget->availableGeometry();
@@ -280,7 +319,9 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	scene->addItem(videoItem);
 	scene->addWidget(groupBox);
+#ifdef ONE_PLANE
 	groupBox->setVisible(false);
+#endif
 	scene->setSceneRect(scene->itemsBoundingRect());
 	setScene(scene);
 
