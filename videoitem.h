@@ -7,6 +7,7 @@
 
 #include <rga/rga.h>
 #include <rga/RgaApi.h>
+#include <rkfacial/rkfacial.h>
 #include "snapshotthread.h"
 
 #ifndef NAME_LEN
@@ -29,6 +30,7 @@ struct FacialInfo
 	QRect boxRect;
 	char fullName[NAME_LEN];
 	bool real;
+	enum user_state state;
 };
 
 struct InfoBox
@@ -60,7 +62,7 @@ public:
 
 	bool setBoxRect(int left, int top, int right, int bottom);
 
-	void setName(char *name, bool real);
+	void setUserInfo(struct user_info *info, bool real);
 
 private:
 	QRect displayRect;
@@ -79,8 +81,8 @@ private:
 
 	QMutex mutex;
 
-	bool drawInfoBox(QPainter *painter, QImage *image);
-	void drawBox(QPainter *painter, bool blackList);
+	void drawInfoBox(QPainter *painter, QImage *image);
+	void drawBox(QPainter *painter);
 	void drawSnapshot(QPainter *painter, QImage *image);
 
 	void initTimer();

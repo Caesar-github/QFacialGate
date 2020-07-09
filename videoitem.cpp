@@ -189,35 +189,38 @@ bool VideoItem::setBoxRect(int left, int top, int right, int bottom)
 	return ret;
 }
 
-void VideoItem::setName(char *name, bool real)
+void VideoItem::setUserInfo(struct user_info *info, bool real)
 {
 	int len;
 
 	mutex.lock();
 
-	if(name) {
-		len = strlen(name) > (NAME_LEN - 1) ? (NAME_LEN - 1) : strlen(name);
-		if(strncmp(facial.fullName, name, len)) {
+	if(info && info->sPicturePath && strlen(info->sPicturePath)) {
+		len = strlen(info->sPicturePath) > (NAME_LEN - 1) ? (NAME_LEN - 1) : strlen(info->sPicturePath);
+		if(strncmp(facial.fullName, info->sPicturePath, len)) {
 			memset(facial.fullName, 0, NAME_LEN);
-			strncpy(facial.fullName, name, len);
+			strncpy(facial.fullName, info->sPicturePath, len);
+		}
+
+		if(info->state == USER_STATE_REAL_REGISTERED_WHITE
+			|| info->state == USER_STATE_REAL_REGISTERED_BLACK) {
+			if(snapshotThread->setName(info->sPicturePath))
+				snapshotThread->start();
 		}
 	} else {
 		if(strlen(facial.fullName))
 			memset(facial.fullName, 0, sizeof(NAME_LEN));
 	}
 
-	facial.real = real;
-	if(real) {
-		if(snapshotThread->setName(name))
-			snapshotThread->start();
-	}
+	if(info)
+		facial.state = info->state;
 
+	facial.real = real;
 	mutex.unlock();
 }
 
-static bool findName(char *fullName, char *name, int nameLen)
+static void findName(char *fullName, char *name, int nameLen)
 {
-	bool blackList = false;
 	char *end, *begin;
 
 	memset(name, 0, nameLen);
@@ -229,12 +232,7 @@ static bool findName(char *fullName, char *name, int nameLen)
 			memcpy(name, begin + 1, end - begin - 1);
 		else
 			strcpy(name, "unknown_user");
-
-		if (strstr(fullName, "black_list"))
-			blackList = true;
-	} 
-
-	return blackList;
+	}
 }
 
 static int rgaPrepareInfo(uchar *buf, RgaSURF_FORMAT format, QRectF rect,
@@ -288,7 +286,8 @@ static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format, QRectF srcRect,
 
 void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 {
-	if(!facial.real) {
+	if(facial.state != USER_STATE_REAL_REGISTERED_WHITE
+			&& facial.state != USER_STATE_REAL_REGISTERED_BLACK) {
 		painter->drawImage(infoBox.snapshotRect, defaultSnapshot);
 		return;
 	}
@@ -313,15 +312,14 @@ void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 					image->width(), image->height(), 0, blend);
 }
 
-bool VideoItem::drawInfoBox(QPainter *painter, QImage *image)
+void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 {
 	int flags;
 	QFont font;
-	bool blackList = false;
 	char name[NAME_LEN];
 
 	if(facial.boxRect.isEmpty())
-		return blackList;
+		return;
 
 	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
 	painter->setPen(QPen(Qt::white, 2));
@@ -350,16 +348,14 @@ bool VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	painter->setFont(font);
 	painter->drawText(infoBox.timeRect, flags, date);
 
-	blackList = findName(facial.fullName, name, NAME_LEN);
+	findName(facial.fullName, name, NAME_LEN);
 	if(strlen(name))
 		painter->drawText(infoBox.nameRect, flags, QString(name));
 
 	drawSnapshot(painter, image);
-
-	return blackList;
 }
 
-void VideoItem::drawBox(QPainter *painter, bool blackList)
+void VideoItem::drawBox(QPainter *painter)
 {
 	int w, h;
 
@@ -369,14 +365,23 @@ void VideoItem::drawBox(QPainter *painter, bool blackList)
 	w = facial.boxRect.right() - facial.boxRect.left();
 	h = facial.boxRect.bottom() - facial.boxRect.top();
 
-	if(!strlen(facial.fullName))
-		painter->setPen(QPen(Qt::red, 4));
-	else if(blackList)
-		painter->setPen(QPen(Qt::black, 4));
-	else if(facial.real)
-		painter->setPen(QPen(Qt::green, 4));
-	else
-		painter->setPen(QPen(Qt::yellow, 4));
+	switch(facial.state) {
+		case USER_STATE_FAKE:
+			painter->setPen(QPen(Qt::red, 4));
+			break;
+
+		case USER_STATE_REAL_UNREGISTERED:
+			painter->setPen(QPen(Qt::blue, 4));
+			break;
+
+		case USER_STATE_REAL_REGISTERED_WHITE:
+			painter->setPen(QPen(Qt::green, 4));
+			break;
+
+		case USER_STATE_REAL_REGISTERED_BLACK:
+			painter->setPen(QPen(Qt::black, 4));
+			break;
+	}
 
 	painter->setBrush(QColor(255, 255, 255, 0));
 	painter->drawRect(facial.boxRect.left(), facial.boxRect.top(), w, h);
@@ -385,7 +390,6 @@ void VideoItem::drawBox(QPainter *painter, bool blackList)
 void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 						QWidget *widget)
 {
-	bool blackList = false;
 	static int printf_cnt = 1;
 
 	if(!painter->paintEngine())
@@ -449,8 +453,8 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 #endif
 #endif
 
-	blackList = drawInfoBox(painter, image);
-	drawBox(painter, blackList);
+	drawInfoBox(painter, image);
+	drawBox(painter);
 
 	video.buf = NULL;
 	mutex.unlock();

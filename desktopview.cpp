@@ -6,7 +6,6 @@
 #include <QList>
 
 #include <rkfacial/rkfacial.h>
-#include <rkfacial/display.h>
 #include "savethread.h"
 #include "desktopview.h"
 
@@ -63,7 +62,6 @@ void DesktopView::cameraSwitch()
 {
 	if(cameraType == ISP) {
 		videoItem->setBoxRect(0, 0, -1, -1);
-		videoItem->setName(NULL, false);
 		switchBtn->setText(tr("IR"));
 		cameraType = CIF;
 
@@ -169,7 +167,6 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 
 	if(!left && !top && !right && !bottom) {
 		ret = desktopView->videoItem->setBoxRect(0, 0, -1, -1);
-		desktopView->videoItem->setName(NULL, false);
 		goto update_paint;
 	}
 
@@ -190,10 +187,7 @@ void DesktopView::paintInfo(struct user_info *info, bool real)
 	if(desktopView->cameraType == CIF)
 		return;
 
-	if(info)
-		desktopView->videoItem->setName(info->sPicturePath, real);
-	else
-		desktopView->videoItem->setName(NULL, real);
+	desktopView->videoItem->setUserInfo(info, real);
 }
 
 void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
