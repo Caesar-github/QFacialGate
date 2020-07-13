@@ -42,6 +42,17 @@ private:
 
 	CAMERA_TYPE cameraType;
 
+#ifdef BUILD_TEST
+	QGroupBox *testGroupBox;
+	QPushButton *collectBtn;
+	QPushButton *realBtn;
+	QPushButton *photoBtn;
+
+	bool testing;
+	void initTestUi();
+	static void paintTestInfo(struct test_result *test);
+#endif
+
 	void initSwitchUi();
 	void iniSignalSlots();
 
@@ -56,7 +67,7 @@ private:
 	static void displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 	static void displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
-signals: 
+signals:
 	void updateVideo();
 
 private slots:
@@ -64,6 +75,12 @@ private slots:
 	void registerSlots();
 	void deleteSlots();
 	void saveSlots();
+
+#ifdef BUILD_TEST
+	void saveAllSlots();
+	void saveRealSlots();
+	void saveFakeSlots();
+#endif
 };
 
 #endif // DESKTOPVIEW_H

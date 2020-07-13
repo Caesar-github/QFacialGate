@@ -44,6 +44,25 @@ struct InfoBox
 	QString title;
 };
 
+#ifdef BUILD_TEST
+struct TestBox
+{
+	QRectF irDetectRect;
+	QRectF irLivenessRect;
+	QRectF rgbAlignRect;
+	QRectF rgbExtractRect;
+	QRectF rgbLandmarkRect;
+	QRectF rgbSearchRect;
+};
+
+struct TestInfo
+{
+	bool valid;
+	struct TestBox testBox;
+	struct test_result testResult;
+};
+#endif
+
 class VideoItem : public QGraphicsObject
 {
 	Q_OBJECT
@@ -64,6 +83,10 @@ public:
 
 	void setUserInfo(struct user_info *info, bool real);
 
+#ifdef BUILD_TEST
+	void setTesIntfo(struct test_result *testResult);
+#endif
+
 private:
 	QRect displayRect;
 	QTimer *timer;
@@ -80,6 +103,12 @@ private:
 	SnapshotThread *snapshotThread;
 
 	QMutex mutex;
+
+#ifdef BUILD_TEST
+	struct TestInfo testInfo;
+	void initTestInfo();
+	void drawTestInfo(QPainter *painter);
+#endif
 
 	void drawInfoBox(QPainter *painter, QImage *image);
 	void drawBox(QPainter *painter);

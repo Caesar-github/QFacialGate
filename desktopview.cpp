@@ -35,15 +35,35 @@ bool DesktopView::event(QEvent *event)
 					break;
 				default:
 				{
+					bool flag;
 					QRectF rect = touchPoint.rect();
 					if (rect.isEmpty())
 						break;
 
-					if(rect.y() > groupBox->height() && rect.y() < desktopRect.height()*4/5) {
+					bool settingFlag = rect.y() > groupBox->height()
+						&& rect.y() < desktopRect.height()*4/5;
+#ifdef BUILD_TEST
+					bool testFlag = rect.x() > testGroupBox->width()
+						|| (rect.y() < testGroupBox->y()
+						|| rect.y() > testGroupBox->y() + testGroupBox->height());
+
+					if(testGroupBox->isVisible())
+						flag = settingFlag && testFlag;
+					else
+#endif
+						flag = settingFlag;
+
+					if(flag) {
 						if(groupBox->isVisible())
 							groupBox->setVisible(false);
 						else
 							groupBox->setVisible(true);
+#ifdef BUILD_TEST
+						if(testGroupBox->isVisible())
+							testGroupBox->setVisible(false);
+						else
+							testGroupBox->setVisible(true);
+#endif
 					}
 					break;
 				}
@@ -57,6 +77,98 @@ bool DesktopView::event(QEvent *event)
 
 	return QGraphicsView::event(event);
 }
+
+static void setButtonFormat(QBoxLayout *layout, QPushButton *btn)
+{
+	btn->setFixedSize(160, 70);
+	btn->setStyleSheet("QPushButton{font-size:35px}");
+	layout->addWidget(btn);
+}
+
+#ifdef BUILD_TEST
+void DesktopView::paintTestInfo(struct test_result *test)
+{
+	desktopView->videoItem->setTesIntfo(test);
+	desktopView->collectBtn->setEnabled(true);
+	desktopView->realBtn->setEnabled(true);
+	desktopView->photoBtn->setEnabled(true);
+	desktopView->testing = false;
+}
+
+void DesktopView::initTestUi()
+{
+	QVBoxLayout *vLayout = new QVBoxLayout;
+	testGroupBox = new QGroupBox();
+
+	collectBtn = new QPushButton(tr("开始采集"));
+	setButtonFormat(vLayout, collectBtn);
+	realBtn = new QPushButton(tr("测试真人"));
+	setButtonFormat(vLayout, realBtn);
+	photoBtn = new QPushButton(tr("测试照片"));
+	setButtonFormat(vLayout, photoBtn);
+
+	testGroupBox->setLayout(vLayout);
+	testGroupBox->setObjectName("testGroupBox");
+	testGroupBox->setStyleSheet("#testGroupBox {background-color:rgba(10, 10, 10,100);}");
+	testGroupBox->setWindowOpacity(0.5);
+	testGroupBox->setGeometry(QRect(0, desktopRect.height()/3, desktopRect.width()/3  - 20, desktopRect.height()/4));
+
+	connect(collectBtn, SIGNAL(clicked()), this, SLOT(saveAllSlots()));
+	connect(realBtn, SIGNAL(clicked()), this, SLOT(saveFakeSlots()));
+	connect(photoBtn, SIGNAL(clicked()), this, SLOT(saveRealSlots()));
+
+	testing = false;
+	register_get_test_callback(paintTestInfo);
+}
+
+static void setSaveIrFlag(bool real, bool fake)
+{
+	save_ir_real(real);
+	save_ir_fake(fake);
+}
+
+void DesktopView::saveAllSlots()
+{
+	if(testing)
+		return;
+
+	bool equal = collectBtn->text().compare("开始采集", Qt::CaseSensitive);
+
+	if(!equal) {
+		setSaveIrFlag(true, true);
+		collectBtn->setText(tr("结束采集"));
+		realBtn->setEnabled(false);
+		photoBtn->setEnabled(false);
+	} else {
+		setSaveIrFlag(false, false);
+		collectBtn->setText(tr("开始采集"));
+		realBtn->setEnabled(true);
+		photoBtn->setEnabled(true);
+	}
+}
+
+void DesktopView::saveRealSlots()
+{
+	setSaveIrFlag(true, false);
+	rockface_start_test();
+
+	testing = true;
+	collectBtn->setEnabled(false);
+	realBtn->setEnabled(false);
+	photoBtn->setEnabled(false);
+}
+
+void DesktopView::saveFakeSlots()
+{
+	setSaveIrFlag(false, true);
+	rockface_start_test();
+
+	testing = true;
+	collectBtn->setEnabled(false);
+	realBtn->setEnabled(false);
+	photoBtn->setEnabled(false);
+}
+#endif
 
 void DesktopView::cameraSwitch()
 {
@@ -102,32 +214,20 @@ void DesktopView::initSwitchUi()
 	groupBox = new QGroupBox();
 
 	registerBtn = new QPushButton(tr("Register"));
-	registerBtn->setFixedSize(160, 80);
-	registerBtn->setStyleSheet("QPushButton{font-size:35px}");
-	hLayout->addWidget(registerBtn);
-
+	setButtonFormat(hLayout, registerBtn);
 	switchBtn = new QPushButton(tr("RGB"));
-	switchBtn->setFixedSize(160, 80);
-	switchBtn->setStyleSheet("QPushButton{font-size:35px}");
-	hLayout->addWidget(switchBtn);
-
+	setButtonFormat(hLayout, switchBtn);
 	saveBtn = new QPushButton(tr("Capture"));
-	saveBtn->setFixedSize(160, 80);
-	saveBtn->setStyleSheet("QPushButton{font-size:35px}");
-	hLayout->addWidget(saveBtn);
-
+	setButtonFormat(hLayout, saveBtn);
 	deleteBtn = new QPushButton(tr("Delete"));
-	deleteBtn->setFixedSize(160, 80);
-	deleteBtn->setStyleSheet("QPushButton{font-size:35px}");
-	hLayout->addWidget(deleteBtn);
+	setButtonFormat(hLayout, deleteBtn);
 
 	groupBox->setLayout(hLayout);
-
 	groupBox->setObjectName("groupBox");
 	groupBox->setStyleSheet("#groupBox {background-color:rgba(10, 10, 10,100);}");
 	groupBox->setWindowOpacity(0.5);
 	//groupBox->setWindowFlags(Qt::FramelessWindowHint);
-	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), desktopRect.height()/10));
+	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), desktopRect.height()/9 - 40));
 }
 
 void DesktopView::iniSignalSlots()
@@ -316,6 +416,13 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 #ifdef ONE_PLANE
 	groupBox->setVisible(false);
 #endif
+
+#ifdef BUILD_TEST
+	initTestUi();
+	scene->addWidget(testGroupBox);
+	testGroupBox->setVisible(false);
+#endif
+
 	scene->setSceneRect(scene->itemsBoundingRect());
 	setScene(scene);
 

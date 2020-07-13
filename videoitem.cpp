@@ -48,6 +48,10 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	snapshotThread = new SnapshotThread();
 
 	initTimer();
+
+#ifdef BUILD_TEST
+	initTestInfo();
+#endif
 }
 
 VideoItem::~VideoItem()
@@ -116,9 +120,95 @@ void VideoItem::timerTimeOut()
 	mutex.unlock();
 }
 
+#ifdef BUILD_TEST
+void VideoItem::initTestInfo()
+{
+	testInfo.valid = false;
+	memset(&testInfo.testResult, 0, sizeof(struct test_result));
+
+	testInfo.testBox.irDetectRect.setRect(displayRect.width()*2/3 - 70, displayRect.height()/6,
+		displayRect.width()/3 + 70, 35);
+	testInfo.testBox.irLivenessRect.setRect(testInfo.testBox.irDetectRect.x(),
+		testInfo.testBox.irDetectRect.y() + testInfo.testBox.irDetectRect.height() + 10,
+		testInfo.testBox.irDetectRect.width(), testInfo.testBox.irDetectRect.height());
+	testInfo.testBox.rgbLandmarkRect.setRect(testInfo.testBox.irLivenessRect.x(),
+		testInfo.testBox.irLivenessRect.y() + testInfo.testBox.irLivenessRect.height() + 10,
+		testInfo.testBox.irLivenessRect.width(), testInfo.testBox.irLivenessRect.height());
+	testInfo.testBox.rgbAlignRect.setRect(testInfo.testBox.rgbLandmarkRect.x(),
+		testInfo.testBox.rgbLandmarkRect.y() + testInfo.testBox.rgbLandmarkRect.height() + 10,
+		testInfo.testBox.rgbLandmarkRect.width(), testInfo.testBox.rgbLandmarkRect.height());
+	testInfo.testBox.rgbExtractRect.setRect(testInfo.testBox.rgbAlignRect.x(),
+		testInfo.testBox.rgbAlignRect.y() + testInfo.testBox.rgbAlignRect.height() + 10,
+		testInfo.testBox.rgbAlignRect.width(), testInfo.testBox.rgbAlignRect.height());
+	testInfo.testBox.rgbSearchRect.setRect(testInfo.testBox.rgbExtractRect.x(),
+		testInfo.testBox.rgbExtractRect.y() + testInfo.testBox.rgbExtractRect.height() + 10,
+		testInfo.testBox.rgbExtractRect.width(), testInfo.testBox.rgbExtractRect.height());
+}
+
+void VideoItem::setTesIntfo(struct test_result *testResult)
+{
+	if(!testResult)
+		return;
+
+	mutex.lock();
+	memcpy(&testInfo.testResult, testResult, sizeof(struct test_result));
+
+#if 0
+	qDebug("ir_detect: %d/%d", testInfo.testResult.ir_detect_ok, testInfo.testResult.ir_detect_total);
+	qDebug("ir_liveness: %d/%d", testInfo.testResult.ir_liveness_ok, testInfo.testResult.ir_liveness_total);
+	qDebug("rgb_align: %d/%d", testInfo.testResult.rgb_align_ok, testInfo.testResult.rgb_align_total);
+	qDebug("rgb_detect: %d/%d", testInfo.testResult.rgb_detect_ok, testInfo.testResult.rgb_detect_total);
+	qDebug("rgb_extract: %d/%d", testInfo.testResult.rgb_extract_ok, testInfo.testResult.rgb_extract_total);
+	qDebug("rgb_landmark: %d/%d", testInfo.testResult.rgb_landmark_ok, testInfo.testResult.rgb_landmark_total);
+	qDebug("rgb_search: %d/%d", testInfo.testResult.rgb_search_ok,testInfo.testResult.rgb_search_total);
+#endif
+
+	testInfo.valid = true;
+	mutex.unlock();
+}
+
+void VideoItem::drawTestInfo(QPainter *painter)
+{
+	if(!testInfo.valid)
+		return;
+
+	QString text;
+	QFont font;
+
+	int flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
+	font.setPixelSize(25);
+
+	painter->setPen(QPen(Qt::red, 2));
+	painter->setFont(font);
+
+	text = "ir_detect: " + QString::number(testInfo.testResult.ir_detect_ok)
+		+ "/" + QString::number(testInfo.testResult.ir_detect_total);
+	painter->drawText(testInfo.testBox.irDetectRect, flags, text);
+
+	text = "ir_liveness: " + QString::number(testInfo.testResult.ir_liveness_ok)
+		+ "/" + QString::number(testInfo.testResult.ir_liveness_total);
+	painter->drawText(testInfo.testBox.irLivenessRect, flags, text);
+
+	text = "rgb_landmark: " + QString::number(testInfo.testResult.rgb_landmark_ok)
+		+ "/" + QString::number(testInfo.testResult.rgb_landmark_total);
+	painter->drawText(testInfo.testBox.rgbLandmarkRect, flags, text);
+
+	text = "rgb_align: " + QString::number(testInfo.testResult.rgb_align_ok)
+		+ "/" + QString::number(testInfo.testResult.rgb_align_total);
+	painter->drawText(testInfo.testBox.rgbAlignRect, flags, text);
+
+	text = "rgb_extract: " + QString::number(testInfo.testResult.rgb_extract_ok)
+		+ "/" + QString::number(testInfo.testResult.rgb_extract_total);
+	painter->drawText(testInfo.testBox.rgbExtractRect, flags, text);
+
+	text = "rgb_search: " + QString::number(testInfo.testResult.rgb_search_ok)
+		+ "/" + QString::number(testInfo.testResult.rgb_search_total);
+	painter->drawText(testInfo.testBox.rgbSearchRect, flags, text);
+}
+#endif
+
 void VideoItem::render(uchar *buf, RgaSURF_FORMAT format, int rotate, int width, int height)
 {
-
 	mutex.lock();
 
 #if 0
@@ -455,6 +545,10 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
 	drawInfoBox(painter, image);
 	drawBox(painter);
+
+#ifdef BUILD_TEST
+	drawTestInfo(painter);
+#endif
 
 	video.buf = NULL;
 	mutex.unlock();
