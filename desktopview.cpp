@@ -6,6 +6,9 @@
 #include <QList>
 
 #include <rkfacial/rkfacial.h>
+#ifdef TWO_PLANE
+#include <rkfacial/display.h>
+#endif
 #include "savethread.h"
 #include "desktopview.h"
 
