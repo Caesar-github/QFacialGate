@@ -34,9 +34,14 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 
 	memset(&facial, 0, sizeof(struct FacialInfo));
 	memset(&video, 0, sizeof(struct VideoInfo));
+	facial.boxRect.setCoords(0, 0, -1, -1);
 
 	int len = infoBox.infoRect.width() * infoBox.infoRect.height();
+#ifdef QT_FB_DRM_ARGB32
+	int r = 153, g = 51, b = 250, a = 170;
+#else
 	int r = 153, g = 51, b = 250, a = 100;
+#endif
 	int bgra = ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 	infoBoxBuf = (int *)malloc(len * sizeof(int));
 	if(infoBoxBuf) {
@@ -269,8 +274,8 @@ bool VideoItem::setBoxRect(int left, int top, int right, int bottom)
 
 	mutex.lock();
 
-	if(abs(facial.boxRect.left() - left) > MIN_POS_DIFF || abs(facial.boxRect.top() - top) > MIN_POS_DIFF
-		|| abs(facial.boxRect.right() - right) > MIN_POS_DIFF || abs(facial.boxRect.bottom() - bottom) > MIN_POS_DIFF) {
+	if(facial.boxRect.left() != left || facial.boxRect.top() != top
+		|| facial.boxRect.right() != right || facial.boxRect.bottom() != bottom) {
 		facial.boxRect.setCoords(left, top, right, bottom);
 		ret = true;
 	}
@@ -414,10 +419,18 @@ void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
 	painter->setPen(QPen(Qt::white, 2));
 
-#if defined(QT_FB_DRM_RGB565) || defined(TWO_PLANE)
+#ifdef QT_FB_DRM_RGB565
 	painter->setBrush(QColor(153, 51, 250, 100));
 	painter->setClipRect(boundingRect());
 	painter->drawRect(infoBox.infoRect);
+#else
+	if(infoBoxBuf) {
+		QRectF srcInfo(0, 0, infoBox.infoRect.width(), infoBox.infoRect.height());
+		rgaDrawImage((uchar *)infoBoxBuf, rgaFormat, srcInfo,
+						infoBox.infoRect.width(), infoBox.infoRect.height(),
+						image->bits(), rgaFormat, infoBox.infoRect,
+						image->width(), image->height(), 0, blend);
+	}
 #endif
 
 	if(strlen(ip)) {
@@ -524,23 +537,9 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 	QRectF dstRect(0, 0, image->width(), image->height());
 
 #ifdef ONE_PLANE
-#ifdef QT_FB_DRM_RGB565
 	rgaDrawImage(video.buf, video.format, srcRect, video.width, video.height,
 					image->bits(), rgaFormat, dstRect, image->width(),
 					image->height(), video.rotate, 0);
-#else
-	rgaDrawImage(video.buf, video.format, srcRect, video.width, video.height,
-					image->bits(), rgaFormat, dstRect, image->width(),
-					image->height(), video.rotate, 0);
-
-	if(!facial.boxRect.isEmpty() && infoBoxBuf) {
-		QRectF srcInfo(0, 0, infoBox.infoRect.width(), infoBox.infoRect.height());
-		rgaDrawImage((uchar *)infoBoxBuf, rgaFormat, srcInfo,
-						infoBox.infoRect.width(), infoBox.infoRect.height(),
-						image->bits(), rgaFormat, infoBox.infoRect,
-						image->width(), image->height(), 0, blend);
-	}
-#endif
 #endif
 
 	drawInfoBox(painter, image);

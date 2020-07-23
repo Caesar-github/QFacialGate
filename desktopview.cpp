@@ -67,6 +67,8 @@ bool DesktopView::event(QEvent *event)
 						else
 							testGroupBox->setVisible(true);
 #endif
+						desktopView->update();
+						desktopView->scene()->update();
 					}
 					break;
 				}
@@ -182,6 +184,8 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_IR);
+		desktopView->update();
+		desktopView->scene()->update();
 #endif
 	} else {
 		switchBtn->setText(tr("RGB"));
@@ -189,6 +193,8 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_RGB);
+		desktopView->update();
+		desktopView->scene()->update();
 #endif
 	}
 }
@@ -352,6 +358,7 @@ static int DesktopView::initRkfacial(int faceCnt)
 #ifdef TWO_PLANE
 	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL, true);
 	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL);
+	set_isp_rotation(270);
 
 	display_switch(DISPLAY_VIDEO_RGB);
 	if (display_init(720, 1280)) {
@@ -416,9 +423,7 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	scene->addItem(videoItem);
 	scene->addWidget(groupBox);
-#ifdef ONE_PLANE
 	groupBox->setVisible(false);
-#endif
 
 #ifdef BUILD_TEST
 	initTestUi();
