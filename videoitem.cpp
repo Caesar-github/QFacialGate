@@ -1,11 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <linux/sockios.h>
-#include <arpa/inet.h>
 #include <QtWidgets>
 #include <QPainter>
 #include <QPaintEngine>
@@ -32,6 +27,7 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	infoBox.snapshotRect = QRectF(550, 1070, 150, 150);
 	infoBox.title = tr("人脸识别");
 
+	memset(ip, 0, MAX_IP_LEN);
 	memset(&facial, 0, sizeof(struct FacialInfo));
 	memset(&video, 0, sizeof(struct VideoInfo));
 	facial.boxRect.setCoords(0, 0, -1, -1);
@@ -52,8 +48,6 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	defaultSnapshot.load(":/images/default_user_face.png");
 	snapshotThread = new SnapshotThread();
 
-	initTimer();
-
 #ifdef BUILD_TEST
 	initTestInfo();
 #endif
@@ -62,67 +56,10 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 VideoItem::~VideoItem()
 {
 	c_RkRgaDeInit();
-	timer->stop();
 	if(infoBoxBuf) {
 		free(infoBoxBuf);
 		infoBoxBuf = NULL;
 	}
-}
-
-static int getLocalIp(char *interface, char *ip, int ip_len)
-{
-	int sd;
-	struct sockaddr_in sin;
-	struct ifreq ifr;
-
-	memset(ip, 0, ip_len);
-	sd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (-1 == sd) {
-		//qDebug("socket error: %s\n", strerror(errno));
-		return -1;
-	}
-
-	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
-	ifr.ifr_name[IFNAMSIZ - 1] = 0;
-
-	if (ioctl(sd, SIOCGIFADDR, &ifr) < 0) {
-		//qDebug("ioctl error: %s\n", strerror(errno));
-		close(sd);
-		return -1;
-	}
-
-	memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
-	sprintf(ip, "%s", inet_ntoa(sin.sin_addr));
-
-	close(sd);
-	return 0;
-}
-
-void VideoItem::initTimer()
-{
-	timer = new QTimer;
-	timer->setSingleShot(false);
-	timer->start(3000); //ms
-	connect(timer, SIGNAL(timeout()), this, SLOT(timerTimeOut()));
-}
-
-void VideoItem::timerTimeOut()
-{
-#if 0
-	static QTime t_time;
-	static int cnt = 1;
-
-	if(cnt) {
-		t_time.start();
-		cnt--;
-	}
-
-	qDebug("%s: %ds", __func__, t_time.elapsed() / 1000);
-#endif
-
-	mutex.lock();
-	getLocalIp("eth0", ip, 20);
-	mutex.unlock();
 }
 
 #ifdef BUILD_TEST
@@ -249,25 +186,6 @@ QRectF VideoItem::boundingRect() const
 	return QRectF(displayRect.x(), displayRect.y(), displayRect.width(), displayRect.height());
 }
 
-void VideoItem::updateSlots()
-{
-#if 0 
-		//printf fps
-		static QTime u_time;
-		static int u_frames = 0;
-	
-		if (!u_frames)
-			u_time.start();
-	
-		if(!(++u_frames % 50))
-			printf("***** %s FPS: %2.2f (%u frames in %ds)\n",
-					__func__, u_frames * 1000.0 / u_time.elapsed(),
-					u_frames, u_time.elapsed() / 1000);
-#endif
-
-	update();
-}
-
 bool VideoItem::setBoxRect(int left, int top, int right, int bottom)
 {
 	bool ret = false;
@@ -312,6 +230,17 @@ void VideoItem::setUserInfo(struct user_info *info, bool real)
 
 	facial.real = real;
 	mutex.unlock();
+}
+
+void VideoItem::setIp(char *current_ip)
+{
+	if(current_ip)
+		strcpy(ip, current_ip);
+}
+
+char *VideoItem::getIp()
+{
+	return ip;
 }
 
 static void findName(char *fullName, char *name, int nameLen)
@@ -381,8 +310,9 @@ static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format, QRectF srcRect,
 
 void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 {
-	if(facial.state != USER_STATE_REAL_REGISTERED_WHITE
-			&& facial.state != USER_STATE_REAL_REGISTERED_BLACK) {
+	if((facial.state != USER_STATE_REAL_REGISTERED_WHITE
+			&& facial.state != USER_STATE_REAL_REGISTERED_BLACK)
+			|| facial.boxRect.isEmpty()) {
 		painter->drawImage(infoBox.snapshotRect, defaultSnapshot);
 		return;
 	}
@@ -412,9 +342,6 @@ void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	int flags;
 	QFont font;
 	char name[NAME_LEN];
-
-	if(facial.boxRect.isEmpty())
-		return;
 
 	flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
 	painter->setPen(QPen(Qt::white, 2));
@@ -452,7 +379,7 @@ void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	painter->drawText(infoBox.timeRect, flags, date);
 
 	findName(facial.fullName, name, NAME_LEN);
-	if(strlen(name))
+	if(strlen(name) && !facial.boxRect.isEmpty())
 		painter->drawText(infoBox.nameRect, flags, QString(name));
 
 	drawSnapshot(painter, image);

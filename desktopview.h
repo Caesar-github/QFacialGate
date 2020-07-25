@@ -41,6 +41,7 @@ private:
 	VideoItem *videoItem;
 
 	CAMERA_TYPE cameraType;
+	QTimer *timer;
 
 #ifdef BUILD_TEST
 	QGroupBox *testGroupBox;
@@ -53,13 +54,15 @@ private:
 	static void paintTestInfo(struct test_result *test);
 #endif
 
-	void initSwitchUi();
+	void initUi();
+	void initTimer();
 	void iniSignalSlots();
 
 	int initRkfacial(int faceCnt);
 	void deinitRkfacial();
 
 	void saveFile(uchar *buf, int len, uchar *flag);
+	void updateUi();
 
 	static void paintBox(int left, int top, int right, int bottom);
 	static void paintInfo(struct user_info *info, bool real);
@@ -67,10 +70,9 @@ private:
 	static void displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 	static void displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
-signals:
-	void updateVideo();
-
 private slots:
+	void timerTimeOut();
+
 	void cameraSwitch();
 	void registerSlots();
 	void deleteSlots();

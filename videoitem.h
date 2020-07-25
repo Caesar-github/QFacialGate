@@ -14,7 +14,7 @@
 #define NAME_LEN 256
 #endif
 
-#define MIN_POS_DIFF 10
+#define MAX_IP_LEN 20
 
 struct VideoInfo
 {
@@ -83,18 +83,20 @@ public:
 
 	void setUserInfo(struct user_info *info, bool real);
 
+	void setIp(char *current_ip);
+	char *getIp();
+
 #ifdef BUILD_TEST
 	void setTesIntfo(struct test_result *testResult);
 #endif
 
 private:
 	QRect displayRect;
-	QTimer *timer;
 	struct VideoInfo video;
 	struct FacialInfo facial;
 	struct InfoBox infoBox;
 	int *infoBoxBuf;
-	char ip[20];
+	char ip[MAX_IP_LEN];
 
 	RgaSURF_FORMAT rgaFormat;
 	unsigned int blend;
@@ -113,12 +115,6 @@ private:
 	void drawInfoBox(QPainter *painter, QImage *image);
 	void drawBox(QPainter *painter);
 	void drawSnapshot(QPainter *painter, QImage *image);
-
-	void initTimer();
-
-private slots:
-	void timerTimeOut();
-	void updateSlots();
 };
 
 #endif // VIDEOITEM_H

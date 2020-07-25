@@ -1,5 +1,10 @@
 #include <stdio.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <linux/sockios.h>
+#include <arpa/inet.h>
 
 #include <QtWidgets>
 #include <QTouchEvent>
@@ -17,6 +22,66 @@
 #define SAVE_FRAMES 30
 
 DesktopView *DesktopView::desktopView = nullptr;
+
+static int getLocalIp(char *interface, char *ip, int ip_len)
+{
+	int sd;
+	struct sockaddr_in sin;
+	struct ifreq ifr;
+
+	memset(ip, 0, ip_len);
+	sd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (-1 == sd) {
+		//qDebug("socket error: %s\n", strerror(errno));
+		return -1;
+	}
+
+	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+	ifr.ifr_name[IFNAMSIZ - 1] = 0;
+
+	if (ioctl(sd, SIOCGIFADDR, &ifr) < 0) {
+		//qDebug("ioctl error: %s\n", strerror(errno));
+		close(sd);
+		return -1;
+	}
+
+	memcpy(&sin, &ifr.ifr_addr, sizeof(sin));
+	sprintf(ip, "%s", inet_ntoa(sin.sin_addr));
+
+	close(sd);
+	return 0;
+}
+
+void DesktopView::initTimer()
+{
+	timer = new QTimer;
+	timer->setSingleShot(false);
+	timer->start(3000); //ms
+	connect(timer, SIGNAL(timeout()), this, SLOT(timerTimeOut()));
+}
+
+void DesktopView::timerTimeOut()
+{
+#if 0
+	static QTime t_time;
+	static int cnt = 1;
+
+	if(cnt) {
+		t_time.start();
+		cnt--;
+	}
+
+	qDebug("%s: %ds", __func__, t_time.elapsed() / 1000);
+#endif
+	char ip[MAX_IP_LEN];
+
+	getLocalIp("eth0", ip, MAX_IP_LEN);
+	if(!strcmp(ip, videoItem->getIp()))
+		return;
+
+	videoItem->setIp(ip);
+	updateUi();
+}
 
 bool DesktopView::event(QEvent *event)
 {
@@ -67,8 +132,7 @@ bool DesktopView::event(QEvent *event)
 						else
 							testGroupBox->setVisible(true);
 #endif
-						desktopView->update();
-						desktopView->scene()->update();
+						updateUi();
 					}
 					break;
 				}
@@ -175,6 +239,12 @@ void DesktopView::saveFakeSlots()
 }
 #endif
 
+void DesktopView::updateUi()
+{
+	desktopView->update();
+	desktopView->scene()->update();
+}
+
 void DesktopView::cameraSwitch()
 {
 	if(cameraType == ISP) {
@@ -184,8 +254,7 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_IR);
-		desktopView->update();
-		desktopView->scene()->update();
+		updateUi();
 #endif
 	} else {
 		switchBtn->setText(tr("RGB"));
@@ -193,8 +262,7 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_RGB);
-		desktopView->update();
-		desktopView->scene()->update();
+		updateUi();
 #endif
 	}
 }
@@ -216,7 +284,7 @@ void DesktopView::saveSlots()
 	switchBtn->setEnabled(false);
 }
 
-void DesktopView::initSwitchUi()
+void DesktopView::initUi()
 {
 	QHBoxLayout *hLayout = new QHBoxLayout;
 
@@ -245,8 +313,6 @@ void DesktopView::iniSignalSlots()
 	connect(registerBtn, SIGNAL(clicked()), this, SLOT(registerSlots()));
 	connect(deleteBtn, SIGNAL(clicked()), this, SLOT(deleteSlots()));
 	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
-	//connect(this, SIGNAL(updateVideo()), videoItem, SLOT(updateSlots()));
-	//connect(this, SIGNAL(updateVideo()), videoItem, SLOT(updateSlots()), Qt::BlockingQueuedConnection);
 }
 
 static bool coordIsVaild(int left, int top, int right, int bottom)
@@ -284,8 +350,7 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 update_paint:
 #ifdef TWO_PLANE
 	if(ret) {
-		desktopView->update();
-		desktopView->scene()->update();
+		desktopView->updateUi();
 	}
 #endif
 	return;
@@ -331,8 +396,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h);
-	desktopView->update();
-	desktopView->scene()->update();
+	desktopView->updateUi();
 }
 
 void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
@@ -349,8 +413,7 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h);
-	desktopView->update();
-	desktopView->scene()->update();
+	desktopView->updateUi();
 }
 
 static int DesktopView::initRkfacial(int faceCnt)
@@ -361,7 +424,7 @@ static int DesktopView::initRkfacial(int faceCnt)
 	set_isp_rotation(270);
 
 	display_switch(DISPLAY_VIDEO_RGB);
-	if (display_init(720, 1280)) {
+	if (display_init(desktopRect.width(), desktopRect.height())) {
 		qDebug("%s: display_init failed", __func__);
 		return -1;
 	}
@@ -416,7 +479,7 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	videoItem = new VideoItem(desktopRect);
 	videoItem->setZValue(0);
 
-	initSwitchUi();
+	initUi();
 	iniSignalSlots();
 
 	QGraphicsScene *scene = new QGraphicsScene(this);
@@ -434,10 +497,12 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	scene->setSceneRect(scene->itemsBoundingRect());
 	setScene(scene);
 
+	initTimer();
 	initRkfacial(faceCnt);
 }
 
 DesktopView::~DesktopView()
 {
 	deinitRkfacial();
+	timer->stop();
 }
