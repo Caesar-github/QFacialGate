@@ -147,10 +147,18 @@ bool DesktopView::event(QEvent *event)
 	return QGraphicsView::event(event);
 }
 
-static void setButtonFormat(QBoxLayout *layout, QPushButton *btn)
+static void setButtonFormat(QBoxLayout *layout, QPushButton *btn, bool setting)
 {
-	btn->setFixedSize(160, 70);
-	btn->setStyleSheet("QPushButton{font-size:35px}");
+	bool two_plane = false;
+
+#ifdef TWO_PLANE
+	two_plane = true;
+#endif
+
+	if(!setting || !two_plane) {
+		btn->setFixedSize(160, 70);
+		btn->setStyleSheet("QPushButton{font-size:35px}");
+	}
 	layout->addWidget(btn);
 }
 
@@ -170,11 +178,11 @@ void DesktopView::initTestUi()
 	testGroupBox = new QGroupBox();
 
 	collectBtn = new QPushButton(tr("开始采集"));
-	setButtonFormat(vLayout, collectBtn);
+	setButtonFormat(vLayout, collectBtn, false);
 	realBtn = new QPushButton(tr("测试真人"));
-	setButtonFormat(vLayout, realBtn);
+	setButtonFormat(vLayout, realBtn, false);
 	photoBtn = new QPushButton(tr("测试照片"));
-	setButtonFormat(vLayout, photoBtn);
+	setButtonFormat(vLayout, photoBtn, false);
 
 	testGroupBox->setLayout(vLayout);
 	testGroupBox->setObjectName("testGroupBox");
@@ -291,13 +299,15 @@ void DesktopView::initUi()
 	groupBox = new QGroupBox();
 
 	registerBtn = new QPushButton(tr("Register"));
-	setButtonFormat(hLayout, registerBtn);
+	setButtonFormat(hLayout, registerBtn, true);
 	switchBtn = new QPushButton(tr("RGB"));
-	setButtonFormat(hLayout, switchBtn);
+	setButtonFormat(hLayout, switchBtn, true);
+#ifdef ONE_PLANE
 	saveBtn = new QPushButton(tr("Capture"));
-	setButtonFormat(hLayout, saveBtn);
+	setButtonFormat(hLayout, saveBtn, true);
+#endif
 	deleteBtn = new QPushButton(tr("Delete"));
-	setButtonFormat(hLayout, deleteBtn);
+	setButtonFormat(hLayout, deleteBtn, true);
 
 	groupBox->setLayout(hLayout);
 	groupBox->setObjectName("groupBox");
@@ -312,7 +322,9 @@ void DesktopView::iniSignalSlots()
 	connect(switchBtn, SIGNAL(clicked()), this, SLOT(cameraSwitch()));
 	connect(registerBtn, SIGNAL(clicked()), this, SLOT(registerSlots()));
 	connect(deleteBtn, SIGNAL(clicked()), this, SLOT(deleteSlots()));
+#ifdef ONE_PLANE
 	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
+#endif
 }
 
 static bool coordIsVaild(int left, int top, int right, int bottom)
