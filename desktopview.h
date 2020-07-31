@@ -64,8 +64,8 @@ private:
 	static void paintBox(int left, int top, int right, int bottom);
 	static void paintInfo(struct user_info *info, bool real);
 
-	static void displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
-	static void displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
+	static void displayRgb(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
+	static void displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
 signals:
 	void updateVideo();
