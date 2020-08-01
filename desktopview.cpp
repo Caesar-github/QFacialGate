@@ -393,7 +393,7 @@ void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
 	}
 }
 
-void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
+void DesktopView::displayRgb(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
 {
 	if(desktopView->cameraType != ISP)
 		return;
@@ -411,7 +411,7 @@ void DesktopView::displayIsp(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	desktopView->updateUi();
 }
 
-void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
+void DesktopView::displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
 {
 	if(desktopView->cameraType != CIF)
 		return;
@@ -431,9 +431,9 @@ void DesktopView::displayCif(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 static int DesktopView::initRkfacial(int faceCnt)
 {
 #ifdef TWO_PLANE
-	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL, true);
-	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL);
-	set_isp_rotation(270);
+	set_rgb_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL, true);
+	set_ir_param(CAMERA_WIDTH, CAMERA_HEIGHT, NULL);
+	set_rgb_rotation(90);
 
 	display_switch(DISPLAY_VIDEO_RGB);
 	if (display_init(desktopRect.width(), desktopRect.height())) {
@@ -441,8 +441,8 @@ static int DesktopView::initRkfacial(int faceCnt)
 		return -1;
 	}
 #else
-	set_isp_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayIsp, true);
-	set_cif_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayCif);
+	set_rgb_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayRgb, true);
+	set_ir_param(CAMERA_WIDTH, CAMERA_HEIGHT, displayIr);
 #endif
 
 	set_face_param(CAMERA_WIDTH, CAMERA_HEIGHT, faceCnt);
