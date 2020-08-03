@@ -31,6 +31,11 @@ struct FacialInfo
 	char fullName[NAME_LEN];
 	bool real;
 	enum user_state state;
+
+	//for setFaceInfo
+	uchar *faceBuf;
+	QRect faceRect;
+	int faceFormat;
 };
 
 struct InfoBox
@@ -83,6 +88,8 @@ public:
 
 	void setUserInfo(struct user_info *info, bool real);
 
+	void setFaceInfo(void *ptr, int fmt, int width, int height, int x, int y, int w, int h);
+
 	void setIp(char *current_ip);
 	char *getIp();
 
@@ -105,6 +112,7 @@ private:
 	SnapshotThread *snapshotThread;
 
 	QMutex mutex;
+	QMutex faceMutex;
 
 #ifdef BUILD_TEST
 	struct TestInfo testInfo;

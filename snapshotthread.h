@@ -4,6 +4,8 @@
 #include <QThread>
 #include <QMutex>
 
+#include <rga/rga.h>
+
 #ifndef NAME_LEN
 #define NAME_LEN 256
 #endif
@@ -19,6 +21,7 @@ public:
 	int snapshotWidth();
 	int snapshotHeight();
 	int snapshotBytesPerLine();
+	RgaSURF_FORMAT snapshotFormat();
 	char *snapshotBuf();
 
 private:

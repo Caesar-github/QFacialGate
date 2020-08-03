@@ -48,6 +48,16 @@ int SnapshotThread::snapshotBytesPerLine()
 	return bytes;
 }
 
+RgaSURF_FORMAT SnapshotThread::snapshotFormat()
+{
+	if(bytes == 2)
+		return RK_FORMAT_RGB_565;
+	else if(bytes == 3)
+		return RK_FORMAT_RGB_888;
+	else
+		return RK_FORMAT_UNKNOWN;
+}
+
 char *SnapshotThread::snapshotBuf()
 {
 	if(isRunning())

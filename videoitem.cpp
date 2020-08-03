@@ -31,6 +31,10 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	memset(&facial, 0, sizeof(struct FacialInfo));
 	memset(&video, 0, sizeof(struct VideoInfo));
 	facial.boxRect.setCoords(0, 0, -1, -1);
+	facial.faceRect.setCoords(0, 0, -1, -1);
+	facial.faceBuf = (uchar *)malloc(displayRect.width() * displayRect.height());
+	if(!facial.faceBuf)
+		qDebug("faceBuf malloc failed");
 
 	int len = infoBox.infoRect.width() * infoBox.infoRect.height();
 #ifdef QT_FB_DRM_ARGB32
@@ -60,6 +64,76 @@ VideoItem::~VideoItem()
 		free(infoBoxBuf);
 		infoBoxBuf = NULL;
 	}
+
+	if(facial.faceBuf) {
+		free(facial.faceBuf);
+		facial.faceBuf = NULL;
+	}
+}
+
+static void findName(char *fullName, char *name, int nameLen)
+{
+	char *end, *begin;
+
+	memset(name, 0, nameLen);
+	if(strlen(fullName)) {
+		begin = strrchr(fullName, '/');
+		end = strrchr(fullName, '.');
+
+		if (begin && end && end > begin)
+			memcpy(name, begin + 1, end - begin - 1);
+		else
+			strcpy(name, "unknown_user");
+	}
+}
+
+static int rgaPrepareInfo(uchar *buf, RgaSURF_FORMAT format, QRectF rect,
+				int sw, int sh, rga_info_t *info)
+{
+	memset(info, 0, sizeof(rga_info_t));
+
+	info->fd = -1;
+	info->virAddr = buf;
+	info->mmuFlag = 1;
+
+	return rga_set_rect(&info->rect, rect.x(), rect.y(), rect.width(), rect.height(), sw, sh, format);
+}
+
+static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format, QRectF srcRect,
+				int src_sw, int src_sh, uchar *dst, RgaSURF_FORMAT dst_format,
+				QRectF dstRect, int dst_sw, int dst_sh, int rotate, unsigned int blend)
+{
+	static int rgaSupported = 1;
+	static int rgaInited = 0;
+	rga_info_t srcInfo;
+	rga_info_t dstInfo;
+
+	memset(&srcInfo, 0, sizeof(rga_info_t));
+	memset(&dstInfo, 0, sizeof(rga_info_t));
+
+	if (!rgaSupported)
+		return -1;
+
+	if (!rgaInited) {
+		if (c_RkRgaInit() < 0) {
+			rgaSupported = 0;
+			return -1;
+		}
+
+		rgaInited = 1;
+	}
+
+	if (rgaPrepareInfo(src, src_format, srcRect, src_sw, src_sh, &srcInfo) < 0)
+		return -1;
+
+	if (rgaPrepareInfo(dst, dst_format, dstRect, dst_sw, dst_sh, &dstInfo) < 0)
+		return -1;
+
+	srcInfo.rotation = rotate;
+	if(blend)
+		srcInfo.blend = blend;
+
+	return c_RkRgaBlit(&srcInfo, &dstInfo, NULL);
 }
 
 #ifdef BUILD_TEST
@@ -232,6 +306,28 @@ void VideoItem::setUserInfo(struct user_info *info, bool real)
 	mutex.unlock();
 }
 
+void VideoItem::setFaceInfo(void *ptr, int fmt, int width, int height, int x, int y, int w, int h)
+{
+	if(!ptr)
+		return;
+
+	if(fmt > RK_FORMAT_YCrCb_420_SP_10B) {
+		qDebug("invalid fmt: %d\n", fmt);
+		return;
+	}
+
+	faceMutex.lock();
+
+	QRectF srcRect(x, y, w, h);
+	facial.faceRect.setCoords(0, 0, w - 1, h - 1);
+	facial.faceFormat = fmt;
+	rgaDrawImage(ptr, fmt, srcRect, width, height,
+					facial.faceBuf, fmt, facial.faceRect,
+					facial.faceRect.width(), facial.faceRect.height(), 0, 0);
+
+	faceMutex.unlock();
+}
+
 void VideoItem::setIp(char *current_ip)
 {
 	if(current_ip)
@@ -243,77 +339,34 @@ char *VideoItem::getIp()
 	return ip;
 }
 
-static void findName(char *fullName, char *name, int nameLen)
-{
-	char *end, *begin;
-
-	memset(name, 0, nameLen);
-	if(strlen(fullName)) {
-		begin = strrchr(fullName, '/');
-		end = strrchr(fullName, '.');
-
-		if (begin && end && end > begin)
-			memcpy(name, begin + 1, end - begin - 1);
-		else
-			strcpy(name, "unknown_user");
-	}
-}
-
-static int rgaPrepareInfo(uchar *buf, RgaSURF_FORMAT format, QRectF rect,
-				int sw, int sh, rga_info_t *info)
-{
-	memset(info, 0, sizeof(rga_info_t));
-
-	info->fd = -1;
-	info->virAddr = buf;
-	info->mmuFlag = 1;
-
-	return rga_set_rect(&info->rect, rect.x(), rect.y(), rect.width(), rect.height(), sw, sh, format);
-}
-
-static int rgaDrawImage(uchar *src, RgaSURF_FORMAT src_format, QRectF srcRect,
-				int src_sw, int src_sh, uchar *dst, RgaSURF_FORMAT dst_format,
-				QRectF dstRect, int dst_sw, int dst_sh, int rotate, unsigned int blend)
-{
-	static int rgaSupported = 1;
-	static int rgaInited = 0;
-	rga_info_t srcInfo;
-	rga_info_t dstInfo;
-
-	memset(&srcInfo, 0, sizeof(rga_info_t));
-	memset(&dstInfo, 0, sizeof(rga_info_t));
-
-	if (!rgaSupported)
-		return -1;
-
-	if (!rgaInited) {
-		if (c_RkRgaInit() < 0) {
-			rgaSupported = 0;
-			return -1;
-		}
-
-		rgaInited = 1;
-	}
-
-	if (rgaPrepareInfo(src, src_format, srcRect, src_sw, src_sh, &srcInfo) < 0)
-		return -1;
-
-	if (rgaPrepareInfo(dst, dst_format, dstRect, dst_sw, dst_sh, &dstInfo) < 0)
-		return -1;
-
-	srcInfo.rotation = rotate;
-	if(blend)
-		srcInfo.blend = blend;
-
-	return c_RkRgaBlit(&srcInfo, &dstInfo, NULL);
-}
-
 void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 {
-	if((facial.state != USER_STATE_REAL_REGISTERED_WHITE
-			&& facial.state != USER_STATE_REAL_REGISTERED_BLACK)
-			|| facial.boxRect.isEmpty()) {
-		painter->drawImage(infoBox.snapshotRect, defaultSnapshot);
+	float scale;
+	int width;
+
+	if((facial.state == USER_STATE_FAKE) || facial.boxRect.isEmpty())
+		goto draw_default;
+
+	if(facial.state == USER_STATE_REAL_UNREGISTERED) {
+		faceMutex.lock();
+
+		if(!facial.faceBuf || facial.faceRect.isEmpty()) {
+			faceMutex.unlock();
+			goto draw_default;
+		}
+
+		scale = facial.faceRect.height()/infoBox.snapshotRect.height();
+		width = facial.faceRect.width() / scale;
+		if(infoBox.snapshotRect.x() + width > displayRect.width())
+			width = displayRect.width() - infoBox.snapshotRect.x();
+
+		QRectF dstRect(infoBox.snapshotRect.x(), infoBox.snapshotRect.y(), width, infoBox.snapshotRect.height());
+		rgaDrawImage((uchar *)facial.faceBuf, facial.faceFormat, facial.faceRect,
+						facial.faceRect.width(), facial.faceRect.height(),
+						image->bits(), rgaFormat, dstRect,
+						image->width(), image->height(), 0, blend);
+
+		faceMutex.unlock();
 		return;
 	}
 
@@ -321,20 +374,23 @@ void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 		if(!snapshotThread->isRunning())
 			snapshotThread->start();
 
-		painter->drawImage(infoBox.snapshotRect, defaultSnapshot);
-		return;
+		goto draw_default;
 	}
 
-	float scale = snapshotThread->snapshotHeight()/infoBox.snapshotRect.height();
-	int width = snapshotThread->snapshotWidth() / scale;
+	scale = snapshotThread->snapshotHeight()/infoBox.snapshotRect.height();
+	width = snapshotThread->snapshotWidth() / scale;
 	if(infoBox.snapshotRect.x() + width > displayRect.width())
 		width = displayRect.width() - infoBox.snapshotRect.x();
 	QRectF srcRect(0, 0, snapshotThread->snapshotWidth(), snapshotThread->snapshotHeight());
 	QRectF dstRect(infoBox.snapshotRect.x(), infoBox.snapshotRect.y(), width, infoBox.snapshotRect.height());
-	rgaDrawImage((uchar *)snapshotThread->snapshotBuf(), RK_FORMAT_RGB_888, srcRect,
+	rgaDrawImage((uchar *)snapshotThread->snapshotBuf(), snapshotThread->snapshotFormat(), srcRect,
 					snapshotThread->snapshotWidth(), snapshotThread->snapshotHeight(),
 					image->bits(), rgaFormat, dstRect,
 					image->width(), image->height(), 0, blend);
+	return;
+
+draw_default:
+	painter->drawImage(infoBox.snapshotRect, defaultSnapshot);
 }
 
 void VideoItem::drawInfoBox(QPainter *painter, QImage *image)

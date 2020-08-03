@@ -58,6 +58,11 @@ void DesktopView::initTimer()
 	timer->setSingleShot(false);
 	timer->start(3000); //ms
 	connect(timer, SIGNAL(timeout()), this, SLOT(timerTimeOut()));
+
+	faceTimer = new QTimer;
+	faceTimer->setSingleShot(false);
+	faceTimer->start(1000); //ms
+	connect(faceTimer, SIGNAL(timeout()), this, SLOT(faceTimerTimeOut()));
 }
 
 void DesktopView::timerTimeOut()
@@ -81,6 +86,11 @@ void DesktopView::timerTimeOut()
 
 	videoItem->setIp(ip);
 	updateUi();
+}
+
+void DesktopView::faceTimerTimeOut()
+{
+	updateFace = true;
 }
 
 bool DesktopView::event(QEvent *event)
@@ -376,6 +386,14 @@ void DesktopView::paintInfo(struct user_info *info, bool real)
 	desktopView->videoItem->setUserInfo(info, real);
 }
 
+void DesktopView::paintFace(void *ptr, int fmt, int width, int height, int x, int y, int w, int h)
+{
+	if(desktopView->updateFace) {
+		desktopView->videoItem->setFaceInfo(ptr, fmt, width, height, x, y, w, h);
+		desktopView->updateFace = false;
+	}
+}
+
 void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
 {
 	if(!saving)
@@ -449,6 +467,7 @@ static int DesktopView::initRkfacial(int faceCnt)
 
 	register_rkfacial_paint_box(paintBox);
 	register_rkfacial_paint_info(paintInfo);
+	register_rkfacial_paint_face(paintFace);
 
 	if(rkfacial_init() < 0) {
 		qDebug("%s: rkfacial_init failed", __func__);
@@ -473,6 +492,7 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	cameraType = ISP;
 	saveFrames = SAVE_FRAMES;
 	saving = false;
+	updateFace = false;
 
 #ifdef TWO_PLANE
 	this->setStyleSheet("background: transparent");
@@ -517,4 +537,5 @@ DesktopView::~DesktopView()
 {
 	deinitRkfacial();
 	timer->stop();
+	faceTimer->stop();
 }

@@ -36,12 +36,14 @@ private:
 
 	int saveFrames;
 	bool saving;
+	bool updateFace;
 
 	QRect desktopRect;
 	VideoItem *videoItem;
 
 	CAMERA_TYPE cameraType;
 	QTimer *timer;
+	QTimer *faceTimer;
 
 #ifdef BUILD_TEST
 	QGroupBox *testGroupBox;
@@ -66,12 +68,14 @@ private:
 
 	static void paintBox(int left, int top, int right, int bottom);
 	static void paintInfo(struct user_info *info, bool real);
+	static void paintFace(void *ptr, int fmt, int width, int height, int x, int y, int w, int h);
 
 	static void displayRgb(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 	static void displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
 private slots:
 	void timerTimeOut();
+	void faceTimerTimeOut();
 
 	void cameraSwitch();
 	void registerSlots();
