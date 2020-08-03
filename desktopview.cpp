@@ -394,6 +394,15 @@ void DesktopView::paintFace(void *ptr, int fmt, int width, int height, int x, in
 	}
 }
 
+void DesktopView::configRegion(int x, int y, int w, int h)
+{
+	desktopView->videoItem->setRegion(x, y, w, h);
+
+#ifdef TWO_PLANE
+	desktopView->updateUi();
+#endif
+}
+
 void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
 {
 	if(!saving)
@@ -468,6 +477,7 @@ static int DesktopView::initRkfacial(int faceCnt)
 	register_rkfacial_paint_box(paintBox);
 	register_rkfacial_paint_info(paintInfo);
 	register_rkfacial_paint_face(paintFace);
+	register_get_face_config_region(configRegion);
 
 	if(rkfacial_init() < 0) {
 		qDebug("%s: rkfacial_init failed", __func__);

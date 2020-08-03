@@ -90,6 +90,8 @@ public:
 
 	void setFaceInfo(void *ptr, int fmt, int width, int height, int x, int y, int w, int h);
 
+	void setRegion(int x, int y, int w, int h);
+
 	void setIp(char *current_ip);
 	char *getIp();
 
@@ -99,6 +101,7 @@ public:
 
 private:
 	QRect displayRect;
+	QRect regionRect;
 	struct VideoInfo video;
 	struct FacialInfo facial;
 	struct InfoBox infoBox;
@@ -123,6 +126,7 @@ private:
 	void drawInfoBox(QPainter *painter, QImage *image);
 	void drawBox(QPainter *painter);
 	void drawSnapshot(QPainter *painter, QImage *image);
+	void drawRegion(QPainter *painter);
 };
 
 #endif // VIDEOITEM_H

@@ -19,6 +19,7 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	//blend = 0xFF0105;
 	blend = 0xFF0405;
 	displayRect = rect;
+	regionRect.setCoords(0, 0, -1, -1);
 	infoBox.infoRect.setRect(displayRect.x(), displayRect.height()*4/5, displayRect.width(), displayRect.height()/5);
 	infoBox.titleRect = infoBox.infoRect.adjusted(10, 10, 0, 0);
 	infoBox.ipRect = infoBox.titleRect.adjusted(40, 70, 0, 0);
@@ -319,13 +320,25 @@ void VideoItem::setFaceInfo(void *ptr, int fmt, int width, int height, int x, in
 	faceMutex.lock();
 
 	QRectF srcRect(x, y, w, h);
-	facial.faceRect.setCoords(0, 0, w - 1, h - 1);
+	facial.faceRect.setRect(0, 0, w, h);
 	facial.faceFormat = fmt;
 	rgaDrawImage(ptr, fmt, srcRect, width, height,
 					facial.faceBuf, fmt, facial.faceRect,
 					facial.faceRect.width(), facial.faceRect.height(), 0, 0);
 
 	faceMutex.unlock();
+}
+
+void VideoItem::setRegion(int x, int y, int w, int h)
+{
+	mutex.lock();
+
+	if(x == 0 && y == 0 && w == displayRect.width() && h == displayRect.height())
+		regionRect.setCoords(0, 0, -1, -1);
+	else
+		regionRect.setRect(x, y, w, h);
+
+	mutex.unlock();
 }
 
 void VideoItem::setIp(char *current_ip)
@@ -473,6 +486,24 @@ void VideoItem::drawBox(QPainter *painter)
 	painter->drawRect(facial.boxRect.left(), facial.boxRect.top(), w, h);
 }
 
+void VideoItem::drawRegion(QPainter *painter)
+{
+	if(regionRect.isEmpty())
+		return;
+
+	QFont font;
+	QString title = tr("人脸ROI区域");
+	QRectF titleRect = regionRect.adjusted(10, 10, 0, 0);
+	int flags = Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap;
+	font.setPixelSize(40);
+	painter->setFont(font);
+
+	painter->setPen(QPen(Qt::yellow, 2));
+	painter->drawText(titleRect, flags, title);
+	painter->setBrush(QColor(255, 255, 255, 0));
+	painter->drawRect(regionRect);
+}
+
 void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 						QWidget *widget)
 {
@@ -527,6 +558,7 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
 	drawInfoBox(painter, image);
 	drawBox(painter);
+	drawRegion(painter);
 
 #ifdef BUILD_TEST
 	drawTestInfo(painter);
