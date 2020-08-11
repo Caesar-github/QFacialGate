@@ -33,7 +33,7 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	memset(&video, 0, sizeof(struct VideoInfo));
 	facial.boxRect.setCoords(0, 0, -1, -1);
 	facial.faceRect.setCoords(0, 0, -1, -1);
-	facial.faceBuf = (uchar *)malloc(displayRect.width() * displayRect.height());
+	facial.faceBuf = (uchar *)malloc(displayRect.width() * displayRect.height() * 3);
 	if(!facial.faceBuf)
 		qDebug("faceBuf malloc failed");
 
