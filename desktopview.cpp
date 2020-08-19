@@ -150,6 +150,19 @@ bool DesktopView::event(QEvent *event)
 			break;
 		}
 
+		case QEvent::MouseButtonPress:
+			if(groupBox->isVisible())
+				groupBox->setVisible(false);
+			else
+				groupBox->setVisible(true);
+#ifdef BUILD_TEST
+			if(testGroupBox->isVisible())
+				testGroupBox->setVisible(false);
+			else
+				testGroupBox->setVisible(true);
+#endif
+			break;
+
 		default:
 			break;
 	}
