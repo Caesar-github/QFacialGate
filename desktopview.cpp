@@ -9,6 +9,7 @@
 #include <QtWidgets>
 #include <QTouchEvent>
 #include <QList>
+#include <QTime>
 
 #include <rkfacial/rkfacial.h>
 #ifdef TWO_PLANE
@@ -96,6 +97,7 @@ void DesktopView::faceTimerTimeOut()
 bool DesktopView::event(QEvent *event)
 {
 	switch(event->type()) {
+#if 0
 		case QEvent::TouchBegin:
 		case QEvent::TouchUpdate:
 		case QEvent::TouchEnd:
@@ -149,7 +151,7 @@ bool DesktopView::event(QEvent *event)
 			}
 			break;
 		}
-
+#endif
 		case QEvent::MouseButtonPress:
 			if(groupBox->isVisible())
 				groupBox->setVisible(false);
@@ -272,8 +274,25 @@ void DesktopView::saveFakeSlots()
 
 void DesktopView::updateUi()
 {
-	desktopView->update();
-	desktopView->scene()->update();
+#if 0
+	//printf fps
+	static QTime paint_time;
+	static int paint_frames = 0;
+	if (!paint_frames)
+		paint_time.start();
+
+	if(paint_time.elapsed()/1000 >= 10) {
+		paint_frames = 0;
+		paint_time.restart();
+	}
+
+	if(!(++paint_frames % 50))
+		printf("+++++ %s FPS: %2.2f (%u frames in %ds)\n",
+				__func__, paint_frames * 1000.0 / paint_time.elapsed(),
+				paint_frames, paint_time.elapsed() / 1000);
+#endif
+
+	emit itemDirty();
 }
 
 void DesktopView::cameraSwitch()
@@ -306,6 +325,7 @@ void DesktopView::registerSlots()
 void DesktopView::deleteSlots()
 {
 	rkfacial_delete();
+	videoItem->clear();
 }
 
 void DesktopView::saveSlots()
@@ -313,6 +333,12 @@ void DesktopView::saveSlots()
 	saving = true;
 	saveBtn->setEnabled(false);
 	switchBtn->setEnabled(false);
+}
+
+void DesktopView::updateScene()
+{
+	scene()->update();
+	update();
 }
 
 void DesktopView::initUi()
@@ -348,6 +374,7 @@ void DesktopView::iniSignalSlots()
 #ifdef ONE_PLANE
 	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
 #endif
+	connect(this, SIGNAL(itemDirty()), this, SLOT(updateScene()));
 }
 
 static bool coordIsVaild(int left, int top, int right, int bottom)

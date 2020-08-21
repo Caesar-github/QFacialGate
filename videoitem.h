@@ -95,6 +95,8 @@ public:
 	void setIp(char *current_ip);
 	char *getIp();
 
+	void clear();
+
 #ifdef BUILD_TEST
 	void setTesIntfo(struct test_result *testResult);
 #endif

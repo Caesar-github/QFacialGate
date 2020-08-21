@@ -23,6 +23,7 @@ public:
 	int snapshotBytesPerLine();
 	RgaSURF_FORMAT snapshotFormat();
 	char *snapshotBuf();
+	void clear();
 
 private:
 	char *snapshot;

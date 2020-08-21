@@ -66,6 +66,13 @@ char *SnapshotThread::snapshotBuf()
 	return snapshot;
 }
 
+void SnapshotThread::clear()
+{
+	mutex.lock();
+	memset(fullName, 0, NAME_LEN);
+	mutex.unlock();
+}
+
 void SnapshotThread::run()
 {
 	mutex.lock();

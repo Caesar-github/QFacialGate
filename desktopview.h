@@ -74,6 +74,9 @@ private:
 	static void displayRgb(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 	static void displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
+signals:
+	void itemDirty();
+
 private slots:
 	void timerTimeOut();
 	void faceTimerTimeOut();
@@ -82,6 +85,7 @@ private slots:
 	void registerSlots();
 	void deleteSlots();
 	void saveSlots();
+	void updateScene();
 
 #ifdef BUILD_TEST
 	void saveAllSlots();

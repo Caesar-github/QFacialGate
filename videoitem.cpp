@@ -352,6 +352,12 @@ char *VideoItem::getIp()
 	return ip;
 }
 
+void VideoItem::clear()
+{
+	if(snapshotThread)
+		snapshotThread->clear();
+}
+
 void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 {
 	float scale;
