@@ -10,7 +10,9 @@
 #include <QTouchEvent>
 #include <QList>
 #include <QTime>
+#include <QMessageBox>
 
+#include "dbserver.h"
 #include <rkfacial/rkfacial.h>
 #ifdef TWO_PLANE
 #include <rkfacial/display.h>
@@ -97,7 +99,7 @@ void DesktopView::faceTimerTimeOut()
 bool DesktopView::event(QEvent *event)
 {
 	switch(event->type()) {
-#if 0
+#if 0 //when support mouse, the touch event is also converted to a mouse event
 		case QEvent::TouchBegin:
 		case QEvent::TouchUpdate:
 		case QEvent::TouchEnd:
@@ -120,8 +122,8 @@ bool DesktopView::event(QEvent *event)
 					if (rect.isEmpty())
 						break;
 
-					bool settingFlag = rect.y() > groupBox->height()
-						&& rect.y() < desktopRect.height()*4/5;
+					bool settingFlag = rect.y() > menuWidget->height()
+						&& rect.y() < (desktopRect.height()*4/5 - 110);
 #ifdef BUILD_TEST
 					bool testFlag = rect.x() > testGroupBox->width()
 						|| (rect.y() < testGroupBox->y()
@@ -134,10 +136,10 @@ bool DesktopView::event(QEvent *event)
 						flag = settingFlag;
 
 					if(flag) {
-						if(groupBox->isVisible())
-							groupBox->setVisible(false);
+						if(menuWidget->isVisible())
+							menuWidget->setVisible(false);
 						else
-							groupBox->setVisible(true);
+							menuWidget->setVisible(true);
 #ifdef BUILD_TEST
 						if(testGroupBox->isVisible())
 							testGroupBox->setVisible(false);
@@ -153,23 +155,41 @@ bool DesktopView::event(QEvent *event)
 		}
 #endif
 		case QEvent::MouseButtonPress:
-			if(groupBox->isVisible())
-				groupBox->setVisible(false);
+		{
+			if(editWidget->isVisible())
+				break;
+
+			if(menuWidget->isVisible())
+				menuWidget->setVisible(false);
 			else
-				groupBox->setVisible(true);
+				menuWidget->setVisible(true);
 #ifdef BUILD_TEST
 			if(testGroupBox->isVisible())
 				testGroupBox->setVisible(false);
 			else
 				testGroupBox->setVisible(true);
+
 #endif
 			break;
+		}
 
 		default:
 			break;
 	}
 
 	return QGraphicsView::event(event);
+}
+
+bool DesktopView::eventFilter(QObject *obj, QEvent *e)
+{
+	if((obj == ipEdit || obj == netmaskEdit || obj == gatewayEdit)
+		&& e->type() == QEvent::MouseButtonPress){
+		if(keyBoard->isHidden())
+			keyBoard->showPanel();
+
+		keyBoard->focusLineEdit((QLineEdit*)obj);
+	}
+	return QGraphicsView::eventFilter(obj,e);
 }
 
 static void setButtonFormat(QBoxLayout *layout, QPushButton *btn, bool setting)
@@ -341,11 +361,85 @@ void DesktopView::updateScene()
 	update();
 }
 
+void DesktopView::setSlots()
+{
+	if(videoItem->isVisible()) {
+		videoItem->setVisible(false);
+		setWidget->setVisible(false);
+		editWidget->setVisible(true);
+	}
+	updateUi();
+}
+
+void DesktopView::closeSlots()
+{
+	if(editWidget->isVisible()) {
+		videoItem->setVisible(true);
+		setWidget->setVisible(true);
+		editWidget->setVisible(false);
+		keyBoard->hidePanel();
+	}
+
+	updateUi();
+}
+
+static bool checkAddress(QString address, bool isNetmask)
+{
+	int p0, p1, p2, p3;
+	int maxP0;
+
+	QList<QString> list = address.split('.');
+
+	if(list.count() != 4)
+		return true;
+
+	p0 = list[0].toInt();
+	p1 = list[1].toInt();
+	p2 = list[2].toInt();
+	p3 = list[3].toInt();
+
+	if(isNetmask)
+		maxP0 = 255;
+	else
+		maxP0 = 233;
+
+	if(p0 < 0 || p0 > maxP0
+		|| p1 < 0 || p1 > 255
+		|| p2 < 0 || p2 > 255
+		|| p3 < 0 || p3 > 255)
+		return true;
+
+	return false;
+}
+
+void DesktopView::editSetSlots()
+{
+	bool check;
+
+	if(checkAddress(ipEdit->text(), false)) {
+		QMessageBox::warning(NULL, "warning", "Invalid IP");
+		return;
+	}
+
+	if(checkAddress(netmaskEdit->text(), true)) {
+		QMessageBox::warning(NULL, "warning", "Invalid Netmask");
+		return;
+	}
+
+	if(checkAddress(gatewayEdit->text(), false)) {
+		QMessageBox::warning(NULL, "warning", "Invalid Gateway");
+		return;
+	}
+
+	dbserver_network_ipv4_set("eth0", "manual", qPrintable(ipEdit->text()),
+		qPrintable(netmaskEdit->text()), qPrintable(gatewayEdit->text()));
+}
+
 void DesktopView::initUi()
 {
 	QHBoxLayout *hLayout = new QHBoxLayout;
-
-	groupBox = new QGroupBox();
+	hLayout->setMargin(0);
+	hLayout->setSpacing(0);
 
 	registerBtn = new QPushButton(tr("Register"));
 	setButtonFormat(hLayout, registerBtn, true);
@@ -358,12 +452,65 @@ void DesktopView::initUi()
 	deleteBtn = new QPushButton(tr("Delete"));
 	setButtonFormat(hLayout, deleteBtn, true);
 
-	groupBox->setLayout(hLayout);
-	groupBox->setObjectName("groupBox");
-	groupBox->setStyleSheet("#groupBox {background-color:rgba(10, 10, 10,100);}");
-	groupBox->setWindowOpacity(0.5);
-	//groupBox->setWindowFlags(Qt::FramelessWindowHint);
-	groupBox->setGeometry(QRect(0, 0, desktopRect.width(), desktopRect.height()/9 - 40));
+	menuWidget = new QWidget();
+	menuWidget->setLayout(hLayout);
+	//menuWidget->setObjectName("menuWidget");
+	//menuWidget->setStyleSheet("#menuWidget {background-color:rgba(10, 10, 10, 100);}");
+	menuWidget->setWindowOpacity(0.5);
+	menuWidget->setGeometry(QRect(0, 0, desktopRect.width(), 70));
+
+	QIcon setIcon;
+	setIcon.addFile(":/images/icon_set.png");
+	setBtn.setIcon(setIcon);
+	setBtn.setIconSize(QSize(50, 50));
+
+	QHBoxLayout *setLayout = new QHBoxLayout;
+	setLayout->setMargin(0);
+	setLayout->setSpacing(0);
+	setLayout->addWidget(&setBtn);
+	setWidget = new QWidget;
+	setWidget->setLayout(setLayout);
+	setWidget->setGeometry(desktopRect.width() - 80, desktopRect.height()*4/5 - 80, 50, 50);
+
+	initEditUi();
+}
+
+void DesktopView::initEditUi()
+{
+	QIcon setIcon;
+	setIcon.addFile(":/images/icon_close.png");
+	closeBtn.setIcon(setIcon);
+	closeBtn.setIconSize(QSize(50, 50));
+	closeBtn.setFixedSize(50, 50);
+
+	ipEdit = new QLineEdit();
+	ipEdit->setFixedHeight(70);
+	ipEdit->setPlaceholderText(tr("Please enter IP"));
+	ipEdit->installEventFilter(this);
+
+	netmaskEdit = new QLineEdit();
+	netmaskEdit->setFixedHeight(70);
+	netmaskEdit->setPlaceholderText(tr("Please enter Netmask"));
+	netmaskEdit->installEventFilter(this);
+
+	gatewayEdit = new QLineEdit();
+	gatewayEdit->setFixedHeight(70);
+	gatewayEdit->setPlaceholderText(tr("Please enter Gateway"));
+	gatewayEdit->installEventFilter(this);
+
+	editSetBtn.setText(tr("Setting"));
+	editSetBtn.setFixedSize((desktopRect.width() - 100)/3, 70);
+
+	QVBoxLayout *editLayout = new QVBoxLayout;
+	editLayout->addWidget(&closeBtn); //Qt::AlignRight
+	editLayout->addWidget(ipEdit);
+	editLayout->addWidget(netmaskEdit);
+	editLayout->addWidget(gatewayEdit);
+	editLayout->addWidget(&editSetBtn, 0, Qt::AlignHCenter);
+
+	editWidget = new QWidget;
+	editWidget->setLayout(editLayout);
+	editWidget->setGeometry(50, 200, desktopRect.width() - 100, desktopRect.height()*1/3);
 }
 
 void DesktopView::iniSignalSlots()
@@ -375,6 +522,9 @@ void DesktopView::iniSignalSlots()
 	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
 #endif
 	connect(this, SIGNAL(itemDirty()), this, SLOT(updateScene()));
+	connect(&setBtn, SIGNAL(clicked()), this, SLOT(setSlots()));
+	connect(&closeBtn, SIGNAL(clicked()), this, SLOT(closeSlots()));
+	connect(&editSetBtn, SIGNAL(clicked()), this, SLOT(editSetSlots()));
 }
 
 static bool coordIsVaild(int left, int top, int right, int bottom)
@@ -548,18 +698,22 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	this->setStyleSheet("background: transparent");
 #endif
 
-	QDesktopWidget *desktopWidget = QApplication::desktop();
-	desktopRect = desktopWidget->availableGeometry();
+	desktopRect = QApplication::desktop()->availableGeometry();
 	qDebug("DesktopView Rect(%d, %d, %d, %d)", desktopRect.x(), desktopRect.y(),
 		desktopRect.width(), desktopRect.height());
 
 	resize(desktopRect.width(), desktopRect.height());
 	setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	setAttribute(Qt::WA_AcceptTouchEvents,true);
+
+	setAttribute(Qt::WA_AcceptTouchEvents, true);
+	//qApp->setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents, false);
+	//qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
 
 	videoItem = new VideoItem(desktopRect);
 	videoItem->setZValue(0);
+
+	keyBoard = QKeyBoard::getInstance();
 
 	initUi();
 	iniSignalSlots();
@@ -567,8 +721,12 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	QGraphicsScene *scene = new QGraphicsScene(this);
 	scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 	scene->addItem(videoItem);
-	scene->addWidget(groupBox);
-	groupBox->setVisible(false);
+	scene->addWidget(menuWidget);
+	scene->addWidget(setWidget);
+	scene->addWidget(editWidget);
+	scene->addWidget(keyBoard);
+	menuWidget->setVisible(false);
+	editWidget->setVisible(false);
 
 #ifdef BUILD_TEST
 	initTestUi();
@@ -588,4 +746,7 @@ DesktopView::~DesktopView()
 	deinitRkfacial();
 	timer->stop();
 	faceTimer->stop();
+
+	if(keyBoard)
+		delete keyBoard;
 }

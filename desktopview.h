@@ -5,9 +5,11 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QTouchEvent>
+#include <QLineEdit>
 #include <rkfacial/rkfacial.h>
 
 #include "videoitem.h"
+#include "qtkeyboard.h"
 
 typedef enum {
 	ISP,
@@ -26,13 +28,24 @@ public:
 
 protected:
 	bool event(QEvent *event) override;
+	bool eventFilter(QObject *obj, QEvent *e) override;
 
 private:
-	QGroupBox *groupBox;
+	QWidget *menuWidget;
+	QWidget *setWidget;
+	QWidget *editWidget;
+
 	QPushButton *switchBtn;
 	QPushButton *registerBtn;
 	QPushButton *deleteBtn;
 	QPushButton *saveBtn;
+	QPushButton setBtn;
+	QPushButton closeBtn;
+	QPushButton editSetBtn;
+
+	QLineEdit *ipEdit;
+	QLineEdit *netmaskEdit;
+	QLineEdit *gatewayEdit;
 
 	int saveFrames;
 	bool saving;
@@ -44,6 +57,8 @@ private:
 	CAMERA_TYPE cameraType;
 	QTimer *timer;
 	QTimer *faceTimer;
+
+	QKeyBoard *keyBoard;
 
 #ifdef BUILD_TEST
 	QGroupBox *testGroupBox;
@@ -57,6 +72,7 @@ private:
 #endif
 
 	void initUi();
+	void initEditUi();
 	void initTimer();
 	void iniSignalSlots();
 
@@ -86,6 +102,10 @@ private slots:
 	void deleteSlots();
 	void saveSlots();
 	void updateScene();
+	void setSlots();
+	void closeSlots();
+	void editSetSlots();
+
 
 #ifdef BUILD_TEST
 	void saveAllSlots();
