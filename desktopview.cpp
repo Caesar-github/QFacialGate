@@ -88,12 +88,15 @@ void DesktopView::timerTimeOut()
 		return;
 
 	videoItem->setIp(ip);
-	updateUi();
 }
 
 void DesktopView::faceTimerTimeOut()
 {
 	updateFace = true;
+
+#ifdef TWO_PLANE
+	updateUi();
+#endif
 }
 
 bool DesktopView::event(QEvent *event)
@@ -146,7 +149,6 @@ bool DesktopView::event(QEvent *event)
 						else
 							testGroupBox->setVisible(true);
 #endif
-						updateUi();
 					}
 					break;
 				}
@@ -324,7 +326,6 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_IR);
-		updateUi();
 #endif
 	} else {
 		switchBtn->setText(tr("RGB"));
@@ -332,7 +333,6 @@ void DesktopView::cameraSwitch()
 
 #ifdef TWO_PLANE
 		display_switch(DISPLAY_VIDEO_RGB);
-		updateUi();
 #endif
 	}
 }
@@ -368,7 +368,6 @@ void DesktopView::setSlots()
 		setWidget->setVisible(false);
 		editWidget->setVisible(true);
 	}
-	updateUi();
 }
 
 void DesktopView::closeSlots()
@@ -379,8 +378,6 @@ void DesktopView::closeSlots()
 		editWidget->setVisible(false);
 		keyBoard->hidePanel();
 	}
-
-	updateUi();
 }
 
 static bool checkAddress(QString address, bool isNetmask)
@@ -502,7 +499,8 @@ void DesktopView::initEditUi()
 	editSetBtn.setFixedSize((desktopRect.width() - 100)/3, 70);
 
 	QVBoxLayout *editLayout = new QVBoxLayout;
-	editLayout->addWidget(&closeBtn); //Qt::AlignRight
+	editLayout->setContentsMargins(20, 0, 20, 0);
+	editLayout->addWidget(&closeBtn, 0, Qt::AlignRight);
 	editLayout->addWidget(ipEdit);
 	editLayout->addWidget(netmaskEdit);
 	editLayout->addWidget(gatewayEdit);
@@ -587,10 +585,6 @@ void DesktopView::paintFace(void *ptr, int fmt, int width, int height, int x, in
 void DesktopView::configRegion(int x, int y, int w, int h)
 {
 	desktopView->videoItem->setRegion(x, y, w, h);
-
-#ifdef TWO_PLANE
-	desktopView->updateUi();
-#endif
 }
 
 void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
