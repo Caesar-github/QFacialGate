@@ -61,7 +61,7 @@ private:
 	QKeyBoard *keyBoard;
 
 #ifdef BUILD_TEST
-	QGroupBox *testGroupBox;
+	QWidget *testWidget;
 	QPushButton *collectBtn;
 	QPushButton *realBtn;
 	QPushButton *photoBtn;

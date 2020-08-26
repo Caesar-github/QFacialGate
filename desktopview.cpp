@@ -128,11 +128,11 @@ bool DesktopView::event(QEvent *event)
 					bool settingFlag = rect.y() > menuWidget->height()
 						&& rect.y() < (desktopRect.height()*4/5 - 110);
 #ifdef BUILD_TEST
-					bool testFlag = rect.x() > testGroupBox->width()
-						|| (rect.y() < testGroupBox->y()
-						|| rect.y() > testGroupBox->y() + testGroupBox->height());
+					bool testFlag = rect.x() > testWidget->width()
+						|| (rect.y() < testWidget->y()
+						|| rect.y() > testWidget->y() + testWidget->height());
 
-					if(testGroupBox->isVisible())
+					if(testWidget->isVisible())
 						flag = settingFlag && testFlag;
 					else
 #endif
@@ -144,10 +144,10 @@ bool DesktopView::event(QEvent *event)
 						else
 							menuWidget->setVisible(true);
 #ifdef BUILD_TEST
-						if(testGroupBox->isVisible())
-							testGroupBox->setVisible(false);
+						if(testWidget->isVisible())
+							testWidget->setVisible(false);
 						else
-							testGroupBox->setVisible(true);
+							testWidget->setVisible(true);
 #endif
 					}
 					break;
@@ -166,10 +166,10 @@ bool DesktopView::event(QEvent *event)
 			else
 				menuWidget->setVisible(true);
 #ifdef BUILD_TEST
-			if(testGroupBox->isVisible())
-				testGroupBox->setVisible(false);
+			if(testWidget->isVisible())
+				testWidget->setVisible(false);
 			else
-				testGroupBox->setVisible(true);
+				testWidget->setVisible(true);
 
 #endif
 			break;
@@ -194,7 +194,7 @@ bool DesktopView::eventFilter(QObject *obj, QEvent *e)
 	return QGraphicsView::eventFilter(obj,e);
 }
 
-static void setButtonFormat(QBoxLayout *layout, QPushButton *btn, bool setting)
+static void setButtonFormat(QBoxLayout *layout, QPushButton *btn, QRect rect)
 {
 	bool two_plane = false;
 
@@ -202,9 +202,9 @@ static void setButtonFormat(QBoxLayout *layout, QPushButton *btn, bool setting)
 	two_plane = true;
 #endif
 
-	if(!setting || !two_plane) {
-		btn->setFixedSize(160, 70);
-		btn->setStyleSheet("QPushButton{font-size:35px}");
+	if(!two_plane) {
+		btn->setFixedSize(rect.width()/4, rect.width()/10);
+		btn->setStyleSheet("QPushButton{font-size:30px}");
 	}
 	layout->addWidget(btn);
 }
@@ -222,20 +222,22 @@ void DesktopView::paintTestInfo(struct test_result *test)
 void DesktopView::initTestUi()
 {
 	QVBoxLayout *vLayout = new QVBoxLayout;
-	testGroupBox = new QGroupBox();
+	vLayout->setMargin(0);
+	vLayout->setSpacing(0);
 
 	collectBtn = new QPushButton(tr("开始采集"));
-	setButtonFormat(vLayout, collectBtn, false);
+	setButtonFormat(vLayout, collectBtn, desktopRect);
 	realBtn = new QPushButton(tr("测试真人"));
-	setButtonFormat(vLayout, realBtn, false);
+	setButtonFormat(vLayout, realBtn, desktopRect);
 	photoBtn = new QPushButton(tr("测试照片"));
-	setButtonFormat(vLayout, photoBtn, false);
+	setButtonFormat(vLayout, photoBtn, desktopRect);
 
-	testGroupBox->setLayout(vLayout);
-	testGroupBox->setObjectName("testGroupBox");
-	testGroupBox->setStyleSheet("#testGroupBox {background-color:rgba(10, 10, 10,100);}");
-	testGroupBox->setWindowOpacity(0.5);
-	testGroupBox->setGeometry(QRect(0, desktopRect.height()/3, desktopRect.width()/3  - 20, desktopRect.height()/4));
+	testWidget = new QWidget();
+	testWidget->setLayout(vLayout);
+	//testWidget->setObjectName("testWidget");
+	//testWidget->setStyleSheet("#testWidget {background-color:rgba(10, 10, 10,100);}");
+	testWidget->setWindowOpacity(0.8);
+	testWidget->setGeometry(0, desktopRect.height()/3, 0, desktopRect.width()/10*3);
 
 	connect(collectBtn, SIGNAL(clicked()), this, SLOT(saveAllSlots()));
 	connect(realBtn, SIGNAL(clicked()), this, SLOT(saveFakeSlots()));
@@ -366,7 +368,13 @@ void DesktopView::setSlots()
 	if(videoItem->isVisible()) {
 		videoItem->setVisible(false);
 		setWidget->setVisible(false);
+		menuWidget->setVisible(false);
 		editWidget->setVisible(true);
+
+#ifdef BUILD_TEST
+		if(testWidget->isVisible())
+			testWidget->setVisible(false);
+#endif
 	}
 }
 
@@ -439,27 +447,28 @@ void DesktopView::initUi()
 	hLayout->setSpacing(0);
 
 	registerBtn = new QPushButton(tr("Register"));
-	setButtonFormat(hLayout, registerBtn, true);
+	setButtonFormat(hLayout, registerBtn, desktopRect);
 	switchBtn = new QPushButton(tr("RGB"));
-	setButtonFormat(hLayout, switchBtn, true);
+	setButtonFormat(hLayout, switchBtn, desktopRect);
 #ifdef ONE_PLANE
 	saveBtn = new QPushButton(tr("Capture"));
-	setButtonFormat(hLayout, saveBtn, true);
+	setButtonFormat(hLayout, saveBtn, desktopRect);
 #endif
 	deleteBtn = new QPushButton(tr("Delete"));
-	setButtonFormat(hLayout, deleteBtn, true);
+	setButtonFormat(hLayout, deleteBtn, desktopRect);
 
 	menuWidget = new QWidget();
 	menuWidget->setLayout(hLayout);
 	//menuWidget->setObjectName("menuWidget");
 	//menuWidget->setStyleSheet("#menuWidget {background-color:rgba(10, 10, 10, 100);}");
-	menuWidget->setWindowOpacity(0.5);
-	menuWidget->setGeometry(QRect(0, 0, desktopRect.width(), 70));
+	menuWidget->setWindowOpacity(0.8);
+	menuWidget->setGeometry(0, 0, desktopRect.width(), desktopRect.width()/10);
 
+	int btnSize = desktopRect.width()/15;
 	QIcon setIcon;
 	setIcon.addFile(":/images/icon_set.png");
 	setBtn.setIcon(setIcon);
-	setBtn.setIconSize(QSize(50, 50));
+	setBtn.setIconSize(QSize(btnSize, btnSize));
 
 	QHBoxLayout *setLayout = new QHBoxLayout;
 	setLayout->setMargin(0);
@@ -467,7 +476,8 @@ void DesktopView::initUi()
 	setLayout->addWidget(&setBtn);
 	setWidget = new QWidget;
 	setWidget->setLayout(setLayout);
-	setWidget->setGeometry(desktopRect.width() - 80, desktopRect.height()*4/5 - 80, 50, 50);
+	setWidget->setGeometry(desktopRect.width() - btnSize * 2,
+		desktopRect.height()*4/5 - btnSize * 2, btnSize, btnSize);
 
 	initEditUi();
 }
@@ -476,27 +486,30 @@ void DesktopView::initEditUi()
 {
 	QIcon setIcon;
 	setIcon.addFile(":/images/icon_close.png");
+	int btnSize = desktopRect.width()/15;
 	closeBtn.setIcon(setIcon);
-	closeBtn.setIconSize(QSize(50, 50));
-	closeBtn.setFixedSize(50, 50);
+	closeBtn.setIconSize(QSize(btnSize, btnSize));
+	closeBtn.setFixedSize(btnSize, btnSize);
 
+	int editSize = desktopRect.width()/10;
 	ipEdit = new QLineEdit();
-	ipEdit->setFixedHeight(70);
+	ipEdit->setFixedHeight(editSize);
 	ipEdit->setPlaceholderText(tr("Please enter IP"));
 	ipEdit->installEventFilter(this);
 
 	netmaskEdit = new QLineEdit();
-	netmaskEdit->setFixedHeight(70);
+	netmaskEdit->setFixedHeight(editSize);
 	netmaskEdit->setPlaceholderText(tr("Please enter Netmask"));
 	netmaskEdit->installEventFilter(this);
 
 	gatewayEdit = new QLineEdit();
-	gatewayEdit->setFixedHeight(70);
+	gatewayEdit->setFixedHeight(editSize);
 	gatewayEdit->setPlaceholderText(tr("Please enter Gateway"));
 	gatewayEdit->installEventFilter(this);
 
+	int editWidgetWidth = (desktopRect.width() - desktopRect.width()/7);
 	editSetBtn.setText(tr("Setting"));
-	editSetBtn.setFixedSize((desktopRect.width() - 100)/3, 70);
+	editSetBtn.setFixedSize(editWidgetWidth/3, editSize);
 
 	QVBoxLayout *editLayout = new QVBoxLayout;
 	editLayout->setContentsMargins(20, 0, 20, 0);
@@ -508,7 +521,7 @@ void DesktopView::initEditUi()
 
 	editWidget = new QWidget;
 	editWidget->setLayout(editLayout);
-	editWidget->setGeometry(50, 200, desktopRect.width() - 100, desktopRect.height()*1/3);
+	editWidget->setGeometry(desktopRect.width()/14, desktopRect.height()/6, editWidgetWidth, desktopRect.height()/3);
 }
 
 void DesktopView::iniSignalSlots()
@@ -724,8 +737,8 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 
 #ifdef BUILD_TEST
 	initTestUi();
-	scene->addWidget(testGroupBox);
-	testGroupBox->setVisible(false);
+	scene->addWidget(testWidget);
+	testWidget->setVisible(false);
 #endif
 
 	scene->setSceneRect(scene->itemsBoundingRect());

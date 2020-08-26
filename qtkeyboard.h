@@ -38,6 +38,7 @@ private:
     QLineEdit *lineEdit;
     QPoint mousePoint;
     bool mousePressed;
+    QRect availableGeometry;
 
     void changeInputType(bool caps);
     void insertValue(const QString &value);

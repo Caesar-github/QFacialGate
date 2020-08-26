@@ -21,11 +21,15 @@ VideoItem::VideoItem(const QRect &rect, QGraphicsItem *parent)
 	displayRect = rect;
 	regionRect.setCoords(0, 0, -1, -1);
 	infoBox.infoRect.setRect(displayRect.x(), displayRect.height()*4/5, displayRect.width(), displayRect.height()/5);
-	infoBox.titleRect = infoBox.infoRect.adjusted(10, 10, 0, 0);
-	infoBox.ipRect = infoBox.titleRect.adjusted(40, 70, 0, 0);
-	infoBox.timeRect = infoBox.ipRect.adjusted(0, 50, 0, 0);
-	infoBox.nameRect = infoBox.timeRect.adjusted(0, 70, 0, 0);
-	infoBox.snapshotRect = QRectF(550, 1070, 150, 150);
+	infoBox.titleRect = infoBox.infoRect.adjusted(displayRect.width()/100, displayRect.height()/100, 0, 0);
+	infoBox.ipRect = infoBox.titleRect.adjusted(displayRect.width()/20, displayRect.height()/20, 0, 0);
+	infoBox.timeRect = infoBox.ipRect.adjusted(0, displayRect.height()/25, 0, 0);
+	infoBox.nameRect = infoBox.timeRect.adjusted(0, displayRect.height()/20, 0, 0);
+
+	int size = displayRect.width()/5;
+	infoBox.snapshotRect = QRectF(displayRect.width() - size - 20,
+		infoBox.infoRect.y() + (infoBox.infoRect.height() - size)/2, size, size);
+
 	infoBox.title = tr("人脸识别");
 
 	memset(ip, 0, MAX_IP_LEN);
@@ -441,7 +445,7 @@ void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 		painter->drawText(infoBox.ipRect, flags, QString(ip));
 	}
 
-	font.setPixelSize(40);
+	font.setPixelSize(35);
 	font.setBold(true);
 	painter->setFont(font);
 	painter->drawText(infoBox.titleRect, flags, infoBox.title);
@@ -449,7 +453,8 @@ void VideoItem::drawInfoBox(QPainter *painter, QImage *image)
 	QDateTime time = QDateTime::currentDateTime();
 	QString date = time.toString("yyyy.MM.dd hh:mm:ss");
 	//QString date = time.toString("yyyy.MM.dd hh:mm:ss ddd");
-	font.setPixelSize(35);
+	font.setPixelSize(28);
+	font.setBold(false);
 	painter->setFont(font);
 	painter->drawText(infoBox.timeRect, flags, date);
 

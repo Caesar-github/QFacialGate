@@ -15,6 +15,8 @@ QKeyBoard::QKeyBoard(QWidget *parent) : QWidget(parent),
     lineEdit(nullptr),
     mousePressed(false)
 {
+    availableGeometry = QApplication::desktop()->availableGeometry();
+
     ui->setupUi(this);
     ui->btna->setProperty("btnLetter", true);
     ui->btnb->setProperty("btnLetter", true);
@@ -43,6 +45,8 @@ QKeyBoard::QKeyBoard(QWidget *parent) : QWidget(parent),
     ui->btny->setProperty("btnLetter", true);
     ui->btnz->setProperty("btnLetter", true);
 
+    resize(availableGeometry.width(), availableGeometry.width()/3);
+
     QString btnStyle =
         "QPushButton{\
             color: rgb(255, 255, 255);\
@@ -59,7 +63,6 @@ QKeyBoard::QKeyBoard(QWidget *parent) : QWidget(parent),
             padding:10px; \
         }";
 
-    const QRect availableGeometry = QApplication::desktop()->availableGeometry();
     QFont font;
     font.setPixelSize(availableGeometry.height()/40);
     setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
@@ -161,7 +164,6 @@ void QKeyBoard::slot_onApplicationFocusChanged(QWidget *, QWidget *nowWidget)
             hidePanel();
         }
 
-        const QRect availableGeometry = QApplication::desktop()->availableGeometry();
         resize(availableGeometry.width(), height());
         move(0, availableGeometry.height() - height());
     }
@@ -174,7 +176,6 @@ void QKeyBoard::focusLineEdit(QLineEdit *edit)
 
 	lineEdit = edit;
 
-	const QRect availableGeometry = QApplication::desktop()->availableGeometry();
 	resize(availableGeometry.width(), height());
 	move(0, availableGeometry.height() - height());
 }
