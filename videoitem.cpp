@@ -566,8 +566,13 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 					image->bits(), rgaFormat, dstRect, image->width(),
 					image->height(), video.rotate, 0);
 #endif
+	const QVector<QRect> rects = painter->paintEngine()->systemClip().rects();
+	for (QVector<QRect>::const_iterator it = rects.begin(); it != rects.end(); ++it) {
+		if((it->y() + it->height()) > infoBox.infoRect.y()) {
+			drawInfoBox(painter, image);
+		}
+	}
 
-	drawInfoBox(painter, image);
 	drawBox(painter);
 	drawRegion(painter);
 

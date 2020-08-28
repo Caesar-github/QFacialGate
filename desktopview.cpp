@@ -95,7 +95,8 @@ void DesktopView::faceTimerTimeOut()
 	updateFace = true;
 
 #ifdef TWO_PLANE
-	updateUi();
+	if(videoItem->isVisible())
+		updateUi(0, desktopRect.height()*4/5, desktopRect.width(), desktopRect.height()/5);
 #endif
 }
 
@@ -296,7 +297,7 @@ void DesktopView::saveFakeSlots()
 }
 #endif
 
-void DesktopView::updateUi()
+void DesktopView::updateUi(int x, int y, int w, int h)
 {
 #if 0
 	//printf fps
@@ -316,7 +317,7 @@ void DesktopView::updateUi()
 				paint_frames, paint_time.elapsed() / 1000);
 #endif
 
-	emit itemDirty();
+	emit itemDirty(x, y, w, h);
 }
 
 void DesktopView::cameraSwitch()
@@ -357,10 +358,10 @@ void DesktopView::saveSlots()
 	switchBtn->setEnabled(false);
 }
 
-void DesktopView::updateScene()
+void DesktopView::updateScene(int x, int y, int w, int h)
 {
-	scene()->update();
-	update();
+	scene()->update(x, y, w, h);
+	update(x, y, w, h);
 }
 
 void DesktopView::setSlots()
@@ -532,7 +533,7 @@ void DesktopView::iniSignalSlots()
 #ifdef ONE_PLANE
 	connect(saveBtn, SIGNAL(clicked()), this, SLOT(saveSlots()));
 #endif
-	connect(this, SIGNAL(itemDirty()), this, SLOT(updateScene()));
+	connect(this, SIGNAL(itemDirty(int, int, int, int)), this, SLOT(updateScene(int, int, int, int)));
 	connect(&setBtn, SIGNAL(clicked()), this, SLOT(setSlots()));
 	connect(&closeBtn, SIGNAL(clicked()), this, SLOT(closeSlots()));
 	connect(&editSetBtn, SIGNAL(clicked()), this, SLOT(editSetSlots()));
@@ -573,7 +574,7 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 update_paint:
 #ifdef TWO_PLANE
 	if(ret) {
-		desktopView->updateUi();
+		desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 	}
 #endif
 	return;
@@ -632,7 +633,7 @@ void DesktopView::displayRgb(void *src_ptr, int src_fd, int src_fmt, int src_w, 
 	//qDebug("%s, tid(%lu)\n", __func__, pthread_self());
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h);
-	desktopView->updateUi();
+	desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 }
 
 void DesktopView::displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation)
@@ -649,7 +650,7 @@ void DesktopView::displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, i
 
 	desktopView->videoItem->render((uchar *)src_ptr, src_fmt, rotation,
 						src_w, src_h);
-	desktopView->updateUi();
+	desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 }
 
 static int DesktopView::initRkfacial(int faceCnt)

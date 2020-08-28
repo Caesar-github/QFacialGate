@@ -80,7 +80,7 @@ private:
 	void deinitRkfacial();
 
 	void saveFile(uchar *buf, int len, uchar *flag);
-	void updateUi();
+	void updateUi(int x, int y, int w, int h);
 
 	static void paintBox(int left, int top, int right, int bottom);
 	static void paintInfo(struct user_info *info, bool real);
@@ -91,7 +91,7 @@ private:
 	static void displayIr(void *src_ptr, int src_fd, int src_fmt, int src_w, int src_h, int rotation);
 
 signals:
-	void itemDirty();
+	void itemDirty(int x, int y, int w, int h);
 
 private slots:
 	void timerTimeOut();
@@ -101,7 +101,7 @@ private slots:
 	void registerSlots();
 	void deleteSlots();
 	void saveSlots();
-	void updateScene();
+	void updateScene(int x, int y, int w, int h);
 	void setSlots();
 	void closeSlots();
 	void editSetSlots();
