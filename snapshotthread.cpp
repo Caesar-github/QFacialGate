@@ -69,7 +69,13 @@ char *SnapshotThread::snapshotBuf()
 void SnapshotThread::clear()
 {
 	mutex.lock();
+
+	if(snapshot) {
+		turbojpeg_decode_put(snapshot);
+		snapshot = NULL;
+	}
 	memset(fullName, 0, NAME_LEN);
+
 	mutex.unlock();
 }
 

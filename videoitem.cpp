@@ -274,6 +274,10 @@ bool VideoItem::setBoxRect(int left, int top, int right, int bottom)
 	if(facial.boxRect.left() != left || facial.boxRect.top() != top
 		|| facial.boxRect.right() != right || facial.boxRect.bottom() != bottom) {
 		facial.boxRect.setCoords(left, top, right, bottom);
+
+		if(facial.boxRect.isEmpty())
+			clear();
+
 		ret = true;
 	}
 
@@ -360,6 +364,11 @@ void VideoItem::clear()
 {
 	if(snapshotThread)
 		snapshotThread->clear();
+
+	memset(facial.fullName, 0, NAME_LEN);
+	faceMutex.lock();
+	facial.faceRect.setCoords(0, 0, -1, -1);
+	faceMutex.unlock();
 }
 
 void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
@@ -393,9 +402,11 @@ void VideoItem::drawSnapshot(QPainter *painter, QImage *image)
 		return;
 	}
 
-	if(!snapshotThread->snapshotBuf() && strlen(facial.fullName)) {
-		if(!snapshotThread->isRunning())
-			snapshotThread->start();
+	if(!snapshotThread->snapshotBuf()) {
+		if(strlen(facial.fullName)) {
+			if(!snapshotThread->isRunning())
+				snapshotThread->start();
+		}
 
 		goto draw_default;
 	}
@@ -566,6 +577,7 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 					image->bits(), rgaFormat, dstRect, image->width(),
 					image->height(), video.rotate, 0);
 #endif
+
 	const QVector<QRect> rects = painter->paintEngine()->systemClip().rects();
 	for (QVector<QRect>::const_iterator it = rects.begin(); it != rects.end(); ++it) {
 		if((it->y() + it->height()) > infoBox.infoRect.y()) {
