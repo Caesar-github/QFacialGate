@@ -23,7 +23,7 @@ class DesktopView : public QGraphicsView
 public:
 	static DesktopView *desktopView;
 
-	explicit DesktopView(int faceCnt, QWidget *parent = 0);
+	explicit DesktopView(int faceCnt, int refresh, QWidget *parent = 0);
 	virtual ~DesktopView();
 
 protected:
@@ -47,6 +47,7 @@ private:
 	QLineEdit *netmaskEdit;
 	QLineEdit *gatewayEdit;
 
+	int refreshFrame;
 	int saveFrames;
 	bool saving;
 	bool updateFace;

@@ -6,21 +6,22 @@ static void usage(const char *name)
 {
 	printf("Usage: %s options\n", name);
 	printf("-h --help  Display this usage information.\n"
-		   "-f --face  Set face number.\n");
-	printf("e.g. %s -f 30000 -e -i -c\n", name);
-	printf("e.g. %s -f 30000 -u\n", name);
+			"-f --face  Set face number.\n"
+			"-r --refresh  Set refresh frames.\n");
 	exit(0);
 }
 
 int main(int argc, char *argv[])
 {
 	int faceCnt = 0;
+	int refreshFrame = 0;
 	int nextOption;
 
-	const char* const shortOptions = "hf:";
+	const char* const shortOptions = "hf:r:";
 	const struct option longOptions[] = {
 		{"help", 0, NULL, 'h'},
 		{"face", 1, NULL, 'f'},
+		{"refresh", 1, NULL, 'r'},
 	};
 
 	do {
@@ -28,6 +29,9 @@ int main(int argc, char *argv[])
 		switch (nextOption) {
 		case 'f':
 			faceCnt = atoi(optarg);
+			break;
+		case 'r':
+			refreshFrame = atoi(optarg);
 			break;
 		case -1:
 			break;
@@ -41,7 +45,7 @@ int main(int argc, char *argv[])
 
 	Q_INIT_RESOURCE(QFacialGate);
 
-	DesktopView desktop(faceCnt);
+	DesktopView desktop(faceCnt, refreshFrame);
 	desktop.show();
 
 	return a.exec();

@@ -557,9 +557,22 @@ static bool coordIsVaild(int left, int top, int right, int bottom)
 void DesktopView::paintBox(int left, int top, int right, int bottom)
 {
 	bool ret;
+	int mod = 0;
+	static int refreshCount = 0;
 
 	if(desktopView->cameraType == CIF)
 		return;
+
+	if(desktopView->refreshFrame) {
+		mod = refreshCount % desktopView->refreshFrame;
+
+		refreshCount++;
+		if(refreshCount == 65535)
+			refreshCount = 0;
+
+		if(mod)
+			return;
+	}
 
 	if(!coordIsVaild(left, top, right, bottom))
 		return;
@@ -693,7 +706,7 @@ void DesktopView::deinitRkfacial()
 #endif
 }
 
-DesktopView::DesktopView(int faceCnt, QWidget *parent)
+DesktopView::DesktopView(int faceCnt, int refresh, QWidget *parent)
 	: QGraphicsView(parent)
 {
 	desktopView = this;
@@ -701,6 +714,7 @@ DesktopView::DesktopView(int faceCnt, QWidget *parent)
 	saveFrames = SAVE_FRAMES;
 	saving = false;
 	updateFace = false;
+	refreshFrame = refresh;
 
 #ifdef TWO_PLANE
 	this->setStyleSheet("background: transparent");
