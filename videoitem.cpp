@@ -585,7 +585,6 @@ void VideoItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 		}
 	}
 
-	drawBox(painter);
 	drawRegion(painter);
 
 #ifdef BUILD_TEST

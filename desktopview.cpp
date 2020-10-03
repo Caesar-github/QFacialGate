@@ -16,6 +16,7 @@
 #include <rkfacial/rkfacial.h>
 #ifdef TWO_PLANE
 #include <rkfacial/display.h>
+#include <rkfacial/draw_rect.h>
 #endif
 #include "savethread.h"
 #include "desktopview.h"
@@ -558,8 +559,12 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 {
 	bool ret;
 
-	if(desktopView->cameraType == CIF)
+	if(desktopView->cameraType == CIF) {
+#ifdef TWO_PLANE
+		display_paint_box(0, 0, 0, 0);
+#endif
 		return;
+	}
 
 	if(!coordIsVaild(left, top, right, bottom))
 		return;
@@ -574,7 +579,21 @@ void DesktopView::paintBox(int left, int top, int right, int bottom)
 update_paint:
 #ifdef TWO_PLANE
 	if(ret) {
-		desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
+		display_paint_box(left, top, right, bottom);
+		switch(desktopView->videoItem->facial.state) {
+			case USER_STATE_REAL_UNREGISTERED:
+				display_set_color(set_yuv_color(COLOR_B));
+				break;
+			case USER_STATE_REAL_REGISTERED_WHITE:
+				display_set_color(set_yuv_color(COLOR_G));
+				break;
+			case USER_STATE_REAL_REGISTERED_BLACK:
+				display_set_color(set_yuv_color(COLOR_BK));
+				break;
+			default:
+				display_set_color(set_yuv_color(COLOR_R));
+				break;
+		}
 	}
 #endif
 	return;
@@ -586,6 +605,7 @@ void DesktopView::paintInfo(struct user_info *info, bool real)
 		return;
 
 	desktopView->videoItem->setUserInfo(info, real);
+	desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 }
 
 void DesktopView::paintFace(void *ptr, int fmt, int width, int height, int x, int y, int w, int h)
@@ -593,12 +613,14 @@ void DesktopView::paintFace(void *ptr, int fmt, int width, int height, int x, in
 	if(desktopView->updateFace) {
 		desktopView->videoItem->setFaceInfo(ptr, fmt, width, height, x, y, w, h);
 		desktopView->updateFace = false;
+		desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 	}
 }
 
 void DesktopView::configRegion(int x, int y, int w, int h)
 {
 	desktopView->videoItem->setRegion(x, y, w, h);
+	desktopView->updateUi(0, 0, desktopView->desktopRect.width(), desktopView->desktopRect.height());
 }
 
 void DesktopView::saveFile(uchar *buf, int len, uchar *flag)
