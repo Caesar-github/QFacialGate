@@ -73,6 +73,8 @@ class VideoItem : public QGraphicsObject
 	Q_OBJECT
 
 public:
+	struct FacialInfo facial;
+
 	VideoItem(const QRect &rect, QGraphicsItem *parent = 0);
 	virtual ~VideoItem();
 
@@ -105,7 +107,6 @@ private:
 	QRect displayRect;
 	QRect regionRect;
 	struct VideoInfo video;
-	struct FacialInfo facial;
 	struct InfoBox infoBox;
 	int *infoBoxBuf;
 	char ip[MAX_IP_LEN];
